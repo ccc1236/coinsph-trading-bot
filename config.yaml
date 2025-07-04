@@ -1,0 +1,28 @@
+# config.yaml
+
+# API & symbol
+api:
+  key_env_var: COINS_API_KEY
+  secret_env_var: COINS_SECRET_KEY
+  symbol: SOLPHP
+
+# Trading parameters
+trade:
+  base_amount_php: 150        # ₱ per trade
+  buy_threshold_pct: 1.8      # percent
+  sell_threshold_pct: 2.2     # percent
+  min_hold_hours: 4           # hours
+  max_trades_per_day: 2       # count
+
+# Trend filter
+trend:
+  window_hours: 12            # lookback hours for trend
+
+# Scheduler
+schedule:
+  check_interval_sec: 900     # 15 minutes
+
+# Alerting (we’ll fill this in later)
+alerts:
+  enabled: false
+  slack_webhook_url: ""
