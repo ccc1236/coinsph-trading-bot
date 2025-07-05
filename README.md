@@ -13,7 +13,7 @@ Automated trading scripts for the Coins.ph PHP markets (SOL/PHP), plus volume sa
 - **Utilities**  
   - `check_volumes.py`  
     Basic volume sanity checks (on‐chain or orderbook).  
-  - `coins_api.py`  
+  - `coinsph_api.py`  
     Lightweight wrapper around the Coins.ph REST API.
 
 - **Backtest Engine**  

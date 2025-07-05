@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from coins_api import CoinsAPI
+from coinsph_api import CoinsAPI
 
 load_dotenv()
 

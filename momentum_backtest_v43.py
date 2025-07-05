@@ -2,7 +2,7 @@ import os
 import time
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from coins_api import CoinsAPI
+from coinsph_api import CoinsAPI
 
 load_dotenv(override=True)
 

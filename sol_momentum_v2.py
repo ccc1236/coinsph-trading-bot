@@ -10,7 +10,7 @@ import yaml
 from pathlib import Path
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from coins_api import CoinsAPI
+from coinsph_api import CoinsAPI
 
 # Load environment variables
 load_dotenv(override=True)
