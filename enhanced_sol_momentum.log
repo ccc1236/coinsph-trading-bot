@@ -28,3 +28,12 @@
 2025-07-04 17:02:23,680 - EnhancedSOLMomentumBot - INFO -    Trend window: 12h
 2025-07-04 17:02:23,680 - EnhancedSOLMomentumBot - INFO -    Max trades/day: 2
 2025-07-04 17:02:23,681 - EnhancedSOLMomentumBot - INFO -    Check interval: 15min
+2025-07-04 22:28:13,270 - EnhancedSOLMomentumBot - INFO -    Enhanced SOL Momentum Bot initialized with config.yaml
+2025-07-04 22:28:13,271 - EnhancedSOLMomentumBot - INFO -    Symbol: SOLPHP
+2025-07-04 22:28:13,271 - EnhancedSOLMomentumBot - INFO -    Buy threshold: 1.8%
+2025-07-04 22:28:13,271 - EnhancedSOLMomentumBot - INFO -    Sell threshold: 2.2%
+2025-07-04 22:28:13,271 - EnhancedSOLMomentumBot - INFO -    Trade amount: 150
+2025-07-04 22:28:13,271 - EnhancedSOLMomentumBot - INFO -    Min hold time: 4h
+2025-07-04 22:28:13,271 - EnhancedSOLMomentumBot - INFO -    Trend window: 12h
+2025-07-04 22:28:13,271 - EnhancedSOLMomentumBot - INFO -    Max trades/day: 2
+2025-07-04 22:28:13,271 - EnhancedSOLMomentumBot - INFO -    Check interval: 15min
