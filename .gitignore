@@ -21,3 +21,11 @@ Thumbs.db
 # API credentials (extra protection)
 secrets.json
 credentials.json
+
+# certs & keys
+*.pem
+*.key
+*.crt
+
+# other secrets
+config.json
