@@ -1,12 +1,12 @@
-# 🤖 Crypto Trading Bots for Coins.ph
+# 🤖 Advanced Crypto Trading Bots for Coins.ph
 
-**Automated trading systems featuring momentum analysis, AI integration, and comprehensive risk management.**
+**Professional-grade automated trading systems featuring momentum analysis, AI integration, and comprehensive risk management.**
 
 ---
 
 ## 🌟 Meet the Bots
 
-### 🤖 **TITAN** - Momentum Trading Bot v3.0
+### 🤖 **TITAN** - Advanced Momentum Trading Bot v3.0
 **Pure momentum-based trading with configurable take profit levels**
 - ✅ **High-frequency momentum trading** with optimized parameters
 - ✅ **Configurable take profit levels** (0.5% - 10%)
@@ -35,18 +35,18 @@
 
 ### **🔧 Core Infrastructure**
 - `coinsph_api_v2.py` - Enhanced API wrapper with improved signature handling
+- `momentum_backtest_v44.py` - Advanced backtesting engine with comprehensive analysis
 - `take_profit_optimizer.py` - Comprehensive take profit level optimization
-- `momentum_backtest_v44.py` - Advanced backtesting engine
 
 ### **📊 Analysis & Utilities**
 - `check_volumes.py` - Trading volume analysis and pair recommendations
 - `test_connection.py` - API connectivity and trading permissions validator
 - `test_exchange_rates.py` - USD/PHP exchange rate API testing
-- `test_signals.py` - MarketRaker signal simulation for ORACLE testing
 
 ### **🔐 Configuration**
 - `.env.example` - Environment variables template
 - `requirements.txt` - Python dependencies
+- `.gitignore` - Git ignore rules
 - `README.md` - This comprehensive guide
 
 ---
