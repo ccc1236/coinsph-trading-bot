@@ -6,7 +6,7 @@
 
 ## 🌟 Meet the Bots
 
-### 🤖 **TITAN** - Momentum Trading Bot v3.0
+### 🤖 **TITAN** - Advanced Momentum Trading Bot v3.0
 **Pure momentum-based trading with configurable take profit levels**
 - ✅ **High-frequency momentum trading** with optimized parameters
 - ✅ **Configurable take profit levels** (0.5% - 10%)
@@ -40,6 +40,7 @@
 
 ### **📊 Analysis & Utilities**
 - `check_volumes.py` - Trading volume analysis and pair recommendations
+- `toggle_oracle_mode.py` - Quick ORACLE test/live mode switcher
 - `test_connection.py` - API connectivity and trading permissions validator
 - `test_exchange_rates.py` - USD/PHP exchange rate API testing
 
@@ -81,8 +82,8 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 # Edit .env and add your credentials:
-# COINS_API_KEY=your_api_key_here
-# COINS_SECRET_KEY=your_secret_key_here
+COINS_API_KEY=your_api_key_here
+COINS_SECRET_KEY=your_secret_key_here
 # MARKETRAKER_VERIFICATION_KEY=your_key_here  # Optional for ORACLE
 ```
 
