@@ -4,7 +4,7 @@ import time
 import logging
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from coinsph_api import CoinsAPI
+from coinsph_api_v2 import CoinsAPI
 
 # Force both stdout and stderr to UTF-8 so emojis and ₱ work in prints and logging
 try:
