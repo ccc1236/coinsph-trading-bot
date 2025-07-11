@@ -14,19 +14,21 @@ class CoinsAPI:
         self.session.headers.update({'X-COINS-APIKEY': self.api_key})
     
     def _make_request(self, method, endpoint, params=None, signed=False):
-        """Make API request with FIXED signature handling based on working test_account.py"""
+        """Make API request with WORKING signature handling - Natural parameter order"""
         params = params or {}
         
         if signed:
-            # Use EXACT method from test_account.py that worked perfectly
             current_timestamp = int(time.time() * 1000)
             
             # Use consistent recvWindow for all signed requests
             params['recvWindow'] = '5000'
             params['timestamp'] = str(current_timestamp)
             
-            # Create signature using EXACT method from test_account.py
-            query_string = urlencode(sorted(params.items()))
+            # CRITICAL FIX: Use NATURAL parameter order (NOT sorted) for signature
+            # This was proven to work in our testing
+            query_string = urlencode(list(params.items()))
+            
+            # Create signature
             signature = hmac.new(
                 self.secret_key.encode('utf-8'),
                 query_string.encode('utf-8'),
@@ -36,7 +38,7 @@ class CoinsAPI:
             params['signature'] = signature
             
             # Debug logging for troubleshooting
-            logging.debug(f"Signature debug for {endpoint}:")
+            logging.debug(f"Signature debug for {method} {endpoint}:")
             logging.debug(f"  Query string: {query_string}")
             logging.debug(f"  Timestamp: {current_timestamp}")
             logging.debug(f"  Signature: {signature}")
@@ -47,17 +49,22 @@ class CoinsAPI:
             if method == 'GET':
                 response = self.session.get(url, params=params, timeout=30)
             elif method == 'POST':
+                # For POST requests, send data as form data
                 response = self.session.post(url, data=params, timeout=30)
             elif method == 'DELETE':
                 response = self.session.delete(url, params=params, timeout=30)
             
             # Enhanced error handling with detailed logging
             if response.status_code == 401:
-                logging.error(f"Authentication failed for {endpoint}")
+                logging.error(f"Authentication failed for {method} {endpoint}")
                 logging.error(f"Response: {response.text}")
+            elif response.status_code == 400:
+                logging.error(f"Bad request for {method} {endpoint}")
+                logging.error(f"Response: {response.text}")
+                logging.error(f"Request params: {params}")
             elif response.status_code != 200:
                 logging.error(f"API request failed: {response.status_code}")
-                logging.error(f"Endpoint: {endpoint}")
+                logging.error(f"Endpoint: {method} {endpoint}")
                 logging.error(f"Params: {params}")
                 logging.error(f"Response: {response.text}")
             
@@ -65,7 +72,7 @@ class CoinsAPI:
             return response.json()
             
         except requests.exceptions.RequestException as e:
-            logging.error(f"API request failed for {endpoint}: {e}")
+            logging.error(f"API request failed for {method} {endpoint}: {e}")
             if hasattr(e, 'response') and e.response is not None:
                 logging.error(f"Error response: {e.response.text}")
             raise
@@ -130,7 +137,7 @@ class CoinsAPI:
     
     def place_order(self, symbol, side, order_type, **kwargs):
         """
-        Place a new order with FIXED signature handling
+        Place a new order with WORKING signature and proper tick/step size handling
         
         Args:
             symbol: Trading pair (e.g., 'XRPPHP')
@@ -138,23 +145,107 @@ class CoinsAPI:
             order_type: 'LIMIT', 'MARKET', etc.
             **kwargs: Additional parameters like quantity, price, timeInForce
         """
+        # Get symbol info for proper formatting
+        symbol_info = self.get_symbol_info(symbol)
+        
+        # Prepare parameters in the order that works with Coins.ph
         params = {
             'symbol': symbol,
             'side': side,
             'type': order_type,
-            **kwargs
         }
         
-        # Ensure quantity and price are properly formatted
-        if 'quantity' in params:
-            params['quantity'] = str(params['quantity'])
-        if 'price' in params:
-            params['price'] = str(params['price'])
+        # Add other parameters with proper formatting
+        for key, value in kwargs.items():
+            if key == 'price':
+                # Format price with proper tick size
+                price = float(value)
+                if symbol_info:
+                    tick_size = self._get_price_tick_size(symbol_info)
+                    if tick_size:
+                        price = self._round_to_tick_size(price, tick_size)
+                    precision = self._get_price_precision(symbol_info)
+                    params[key] = f"{price:.{precision}f}"
+                else:
+                    params[key] = f"{price:.4f}"
+            elif key == 'quantity':
+                # Format quantity with proper step size
+                quantity = float(value)
+                if symbol_info:
+                    step_size = self._get_quantity_step_size(symbol_info)
+                    if step_size:
+                        quantity = self._round_to_step_size(quantity, step_size)
+                    precision = self._get_quantity_precision(symbol_info)
+                    params[key] = f"{quantity:.{precision}f}"
+                else:
+                    params[key] = f"{quantity:.6f}"
+            else:
+                params[key] = str(value)
         
         # Log the order attempt for debugging
         logging.info(f"Placing {side} order for {symbol}: {params}")
         
         return self._make_request('POST', '/openapi/v1/order', params, signed=True)
+    
+    def _get_price_tick_size(self, symbol_info):
+        """Get price tick size from symbol info"""
+        if not symbol_info or 'filters' not in symbol_info:
+            return None
+        
+        for filter_info in symbol_info['filters']:
+            if filter_info.get('filterType') == 'PRICE_FILTER':
+                return float(filter_info.get('tickSize', 0))
+        return None
+    
+    def _get_quantity_step_size(self, symbol_info):
+        """Get quantity step size from symbol info"""
+        if not symbol_info or 'filters' not in symbol_info:
+            return None
+        
+        for filter_info in symbol_info['filters']:
+            if filter_info.get('filterType') == 'LOT_SIZE':
+                return float(filter_info.get('stepSize', 0))
+        return None
+    
+    def _get_price_precision(self, symbol_info):
+        """Get price precision from symbol info"""
+        if not symbol_info:
+            return 4  # Default precision
+        
+        tick_size = self._get_price_tick_size(symbol_info)
+        if tick_size:
+            # Count decimal places in tick size
+            tick_str = f"{tick_size:.10f}".rstrip('0')
+            if '.' in tick_str:
+                return len(tick_str.split('.')[1])
+        
+        return symbol_info.get('quotePrecision', 4)
+    
+    def _get_quantity_precision(self, symbol_info):
+        """Get quantity precision from symbol info"""
+        if not symbol_info:
+            return 6  # Default precision
+        
+        step_size = self._get_quantity_step_size(symbol_info)
+        if step_size:
+            # Count decimal places in step size
+            step_str = f"{step_size:.10f}".rstrip('0')
+            if '.' in step_str:
+                return len(step_str.split('.')[1])
+        
+        return symbol_info.get('baseAssetPrecision', 6)
+    
+    def _round_to_tick_size(self, price, tick_size):
+        """Round price to nearest tick size"""
+        if tick_size <= 0:
+            return price
+        return round(price / tick_size) * tick_size
+    
+    def _round_to_step_size(self, quantity, step_size):
+        """Round quantity to nearest step size"""
+        if step_size <= 0:
+            return quantity
+        return round(quantity / step_size) * step_size
     
     def cancel_order(self, symbol=None, order_id=None, client_order_id=None):
         """Cancel an active order"""
