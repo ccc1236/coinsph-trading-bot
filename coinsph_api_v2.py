@@ -14,34 +14,19 @@ class CoinsAPI:
         self.session.headers.update({'X-COINS-APIKEY': self.api_key})
     
     def _make_request(self, method, endpoint, params=None, signed=False):
-        """Make API request with enhanced signature handling for trading endpoints"""
+        """Make API request with FIXED signature handling based on working test_account.py"""
         params = params or {}
         
         if signed:
-            # Get server time for more accurate timestamp
-            try:
-                server_time_response = self.session.get(f"{self.base_url}/openapi/v1/time", timeout=10)
-                if server_time_response.status_code == 200:
-                    server_time = server_time_response.json().get('serverTime')
-                    current_timestamp = server_time
-                else:
-                    current_timestamp = int(time.time() * 1000)
-            except:
-                current_timestamp = int(time.time() * 1000)
+            # Use EXACT method from test_account.py that worked perfectly
+            current_timestamp = int(time.time() * 1000)
             
-            # Use shorter recvWindow for trading endpoints
-            if any(trading_endpoint in endpoint for trading_endpoint in ['/order', '/openOrders', '/historyOrders']):
-                recv_window = '5000'  # 5 seconds for trading
-            else:
-                recv_window = '10000'  # 10 seconds for account info
-            
-            params['recvWindow'] = recv_window
+            # Use consistent recvWindow for all signed requests
+            params['recvWindow'] = '5000'
             params['timestamp'] = str(current_timestamp)
             
-            # Create signature - ensure consistent parameter ordering
+            # Create signature using EXACT method from test_account.py
             query_string = urlencode(sorted(params.items()))
-            
-            # Enhanced signature generation
             signature = hmac.new(
                 self.secret_key.encode('utf-8'),
                 query_string.encode('utf-8'),
@@ -50,11 +35,11 @@ class CoinsAPI:
             
             params['signature'] = signature
             
-            # Log for debugging (remove in production)
+            # Debug logging for troubleshooting
             logging.debug(f"Signature debug for {endpoint}:")
             logging.debug(f"  Query string: {query_string}")
             logging.debug(f"  Timestamp: {current_timestamp}")
-            logging.debug(f"  RecvWindow: {recv_window}")
+            logging.debug(f"  Signature: {signature}")
         
         url = f"{self.base_url}{endpoint}"
         
@@ -66,21 +51,23 @@ class CoinsAPI:
             elif method == 'DELETE':
                 response = self.session.delete(url, params=params, timeout=30)
             
-            # Enhanced error handling
+            # Enhanced error handling with detailed logging
             if response.status_code == 401:
                 logging.error(f"Authentication failed for {endpoint}")
                 logging.error(f"Response: {response.text}")
             elif response.status_code != 200:
                 logging.error(f"API request failed: {response.status_code}")
+                logging.error(f"Endpoint: {endpoint}")
+                logging.error(f"Params: {params}")
                 logging.error(f"Response: {response.text}")
             
             response.raise_for_status()
             return response.json()
             
         except requests.exceptions.RequestException as e:
-            logging.error(f"API request failed: {e}")
+            logging.error(f"API request failed for {endpoint}: {e}")
             if hasattr(e, 'response') and e.response is not None:
-                logging.error(f"Response: {e.response.text}")
+                logging.error(f"Error response: {e.response.text}")
             raise
     
     # ========== PUBLIC ENDPOINTS (No authentication) ==========
@@ -143,7 +130,7 @@ class CoinsAPI:
     
     def place_order(self, symbol, side, order_type, **kwargs):
         """
-        Place a new order with enhanced signature handling
+        Place a new order with FIXED signature handling
         
         Args:
             symbol: Trading pair (e.g., 'XRPPHP')
@@ -163,6 +150,9 @@ class CoinsAPI:
             params['quantity'] = str(params['quantity'])
         if 'price' in params:
             params['price'] = str(params['price'])
+        
+        # Log the order attempt for debugging
+        logging.info(f"Placing {side} order for {symbol}: {params}")
         
         return self._make_request('POST', '/openapi/v1/order', params, signed=True)
     
