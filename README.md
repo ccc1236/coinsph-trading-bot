@@ -132,8 +132,8 @@ Check Interval: 15 minutes
 ```
 
 ### **🎯 Asset Recommendations**
-- **XRPPHP**: Recommended (5.0% take profit, +1.5% backtested return)
-- **SOLPHP**: High volatility (1.8% take profit, -1.3% backtested return)
+- **XRPPHP**: Recommended (5.0% take profit, +1.5% backtested return at the time of writing)
+- **SOLPHP**: High volatility (1.8% take profit, -1.3% backtested return at the time of writing)
 - **Custom**: Any PHP trading pair
 
 ### **🚀 Starting TITAN**
