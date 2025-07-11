@@ -1,12 +1,12 @@
-# 🤖 Advanced Crypto Trading Bots for Coins.ph
+# 🤖 Crypto Trading Bots for Coins.ph
 
-**Professional-grade automated trading systems featuring momentum analysis, AI integration, and comprehensive risk management.**
+**Automated trading systems featuring momentum analysis, AI integration, and comprehensive risk management.**
 
 ---
 
 ## 🌟 Meet the Bots
 
-### 🤖 **TITAN** - Advanced Momentum Trading Bot v3.0
+### 🤖 **TITAN** - Momentum Trading Bot v3.0
 **Pure momentum-based trading with configurable take profit levels**
 - ✅ **High-frequency momentum trading** with optimized parameters
 - ✅ **Configurable take profit levels** (0.5% - 10%)
