@@ -233,14 +233,6 @@ python test_exchange_rates.py
 - Validates fallback mechanisms
 - Price level analysis simulation
 
-### **AI Signal Testing (for ORACLE)**
-```bash
-python test_signals.py
-```
-- Sends fake MarketRaker signals to ORACLE
-- Tests webhook processing
-- Validates decision logic
-
 ---
 
 ## 📈 Performance Monitoring
