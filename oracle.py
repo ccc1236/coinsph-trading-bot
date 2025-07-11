@@ -1,7 +1,10 @@
 """
-momentum_v4.py - AI-Enhanced Trading Bot with MarketRaker Integration
+🔮 ORACLE - AI-Enhanced Trading Bot v4.0
 
-🚀 COMPLETE FEATURES:
+Complete AI-powered trading system with MarketRaker integration, real-time USD/PHP conversion,
+momentum confirmation, and advanced risk management.
+
+🌟 FEATURES:
 - ✅ FastAPI webhook server for MarketRaker signals
 - ✅ Real-time USD/PHP exchange rate conversion  
 - ✅ AI signal processing with momentum confirmation
@@ -48,12 +51,12 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('momentum_v4.log', encoding='utf-8'),
+        logging.FileHandler('oracle.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
 
-logger = logging.getLogger('AITradingBot_v4')
+logger = logging.getLogger('OracleAITradingBot')
 
 @dataclass
 class AISignal:
@@ -77,7 +80,7 @@ class ExchangeRateManager:
         self.cached_rate = None
         self.cache_timestamp = None
         self.cache_duration = 3600  # Cache for 1 hour
-        logger.info("💱 Exchange Rate Manager initialized")
+        logger.info("💱 ORACLE Exchange Rate Manager initialized")
     
     def get_usd_php_rate(self):
         """Get current USD/PHP exchange rate with smart caching"""
@@ -140,8 +143,20 @@ class ExchangeRateManager:
             'percentage_change': ai_signal.percentage_change
         }
 
-class AITradingBot:
+class OracleAITradingBot:
+    """
+    🔮 ORACLE - AI-Enhanced Trading Bot v4.0
+    
+    Advanced AI-powered trading system with MarketRaker integration,
+    real-time currency conversion, and intelligent decision making.
+    """
+    
     def __init__(self, base_amount=200):
+        # Bot identity
+        self.name = "ORACLE"
+        self.version = "4.0.0"
+        self.description = "AI-Enhanced Trading Bot"
+        
         # Initialize Coins.ph API
         self.api = CoinsAPI(
             api_key=os.getenv('COINS_API_KEY'),
@@ -160,7 +175,7 @@ class AITradingBot:
             'ETH/USD': 'ETHPHP'
         }
         
-        # Strategy Parameters (from momentum_v3)
+        # Strategy Parameters (from Titan)
         self.momentum_buy_threshold = 0.006   # 0.6%
         self.momentum_sell_threshold = 0.010  # 1.0%
         self.min_hold_hours = 0.5
@@ -169,7 +184,6 @@ class AITradingBot:
         self.price_tolerance = 3.0  # 3% tolerance for AI entry price
         
         # Runtime State
-        self.version = "4.0.0-complete"
         self.running = False
         self.start_time = datetime.now()
         self.current_positions = {}  # symbol -> position_info
@@ -179,10 +193,10 @@ class AITradingBot:
         self.test_mode = True        # Start in test mode for safety
         
         # FastAPI webhook server
-        self.app = FastAPI(title="AI Trading Bot v4 Complete", version=self.version)
+        self.app = FastAPI(title=f"{self.name} AI Trading Bot", version=self.version)
         self.setup_routes()
         
-        logger.info(f"🤖 AI-Enhanced Trading Bot v{self.version} initialized")
+        logger.info(f"🔮 {self.name} - {self.description} v{self.version} initialized")
         logger.info(f"💰 Base amount: ₱{self.base_amount}")
         logger.info(f"🎯 Supported pairs: {list(self.supported_pairs.keys())}")
         logger.info(f"🧪 Test mode: {'ON' if self.test_mode else 'OFF'}")
@@ -194,7 +208,7 @@ class AITradingBot:
         @self.app.get("/")
         async def root():
             return {
-                "message": "AI Trading Bot v4 - Complete with Exchange Rate Integration",
+                "message": f"{self.name} - {self.description} v{self.version}",
                 "version": self.version,
                 "status": "running" if self.running else "stopped",
                 "test_mode": self.test_mode,
@@ -225,6 +239,7 @@ class AITradingBot:
             
             return {
                 "status": "healthy",
+                "bot_name": self.name,
                 "version": self.version,
                 "running": self.running,
                 "uptime_seconds": int(uptime.total_seconds()),
@@ -261,6 +276,8 @@ class AITradingBot:
             
             return {
                 "bot": {
+                    "name": self.name,
+                    "description": self.description,
                     "version": self.version,
                     "running": self.running,
                     "test_mode": self.test_mode,
@@ -304,24 +321,24 @@ class AITradingBot:
                     ).hexdigest()
                     
                     if not hmac.compare_digest(signature, expected_signature):
-                        logger.warning("⚠️ Invalid MarketRaker signature")
+                        logger.warning(f"⚠️ {self.name}: Invalid MarketRaker signature")
                         # Continue anyway for testing, but log the warning
                 
                 signal_data = json.loads(payload.decode('utf-8'))
                 
-                logger.info("🎯 MarketRaker AI Signal received!")
+                logger.info(f"🎯 {self.name}: MarketRaker AI Signal received!")
                 logger.info(f"   Type: {signal_data.get('type')}")
                 logger.info(f"   Signature: {'✅ Valid' if verification_key and signature else '⚠️ No verification'}")
                 
                 if signal_data.get('type') == 'indicator':
                     await self.process_ai_signal(signal_data['data'])
-                    return JSONResponse({"status": "success", "message": "MarketRaker signal processed"})
+                    return JSONResponse({"status": "success", "message": f"{self.name} signal processed"})
                 else:
-                    logger.warning(f"⚠️ Unknown signal type: {signal_data.get('type')}")
+                    logger.warning(f"⚠️ {self.name}: Unknown signal type: {signal_data.get('type')}")
                     return JSONResponse({"status": "ignored", "message": "Unknown signal type"})
                     
             except Exception as e:
-                logger.error(f"❌ MarketRaker webhook error: {e}")
+                logger.error(f"❌ {self.name} MarketRaker webhook error: {e}")
                 return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
         
         @self.app.post("/webhook/test")
@@ -331,7 +348,7 @@ class AITradingBot:
                 payload = await request.body()
                 signal_data = json.loads(payload.decode('utf-8'))
                 
-                logger.info("📨 Test webhook received!")
+                logger.info(f"📨 {self.name}: Test webhook received!")
                 logger.info(f"   Signal: {signal_data['data']['trading_type']} {signal_data['data']['trading_pair']}")
                 
                 # Process signal in test mode
@@ -340,22 +357,22 @@ class AITradingBot:
                 
                 return JSONResponse({
                     "status": "success", 
-                    "message": "Test signal processed",
+                    "message": f"{self.name} test signal processed",
                     "timestamp": datetime.now().isoformat()
                 })
                 
             except Exception as e:
-                logger.error(f"❌ Test webhook error: {e}")
+                logger.error(f"❌ {self.name} test webhook error: {e}")
                 return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
         
         @self.app.post("/toggle-test-mode")
         async def toggle_test_mode():
             """Toggle between test mode and live trading"""
             self.test_mode = not self.test_mode
-            logger.info(f"🔄 Test mode: {'ON' if self.test_mode else 'OFF'}")
+            logger.info(f"🔄 {self.name} Test mode: {'ON' if self.test_mode else 'OFF'}")
             return {
                 "test_mode": self.test_mode, 
-                "message": f"Test mode {'enabled' if self.test_mode else 'disabled'}"
+                "message": f"{self.name} test mode {'enabled' if self.test_mode else 'disabled'}"
             }
         
         @self.app.get("/exchange-rate")
@@ -381,12 +398,12 @@ class AITradingBot:
             # Convert USD pair to PHP pair
             php_symbol = self.supported_pairs.get(signal.trading_pair)
             if not php_symbol:
-                logger.warning(f"⚠️ Unsupported trading pair: {signal.trading_pair}")
+                logger.warning(f"⚠️ {self.name}: Unsupported trading pair: {signal.trading_pair}")
                 return
             
             # Use provided test_mode or default to instance setting
             is_test = test_mode if test_mode is not None else self.test_mode
-            mode_str = "🧪 TEST" if is_test else "💰 LIVE"
+            mode_str = f"🧪 {self.name} TEST" if is_test else f"💰 {self.name} LIVE"
             
             logger.info(f"🎯 {mode_str} AI Signal for {signal.trading_pair} → {php_symbol}")
             logger.info(f"   Type: {signal.trading_type}")
@@ -405,7 +422,7 @@ class AITradingBot:
                 await self.process_ai_sell_signal(php_symbol, signal, is_test)
                 
         except Exception as e:
-            logger.error(f"❌ Error processing AI signal: {e}")
+            logger.error(f"❌ {self.name} error processing AI signal: {e}")
 
     async def process_ai_buy_signal(self, symbol: str, signal: AISignal, test_mode: bool):
         """Process AI buy signal with complete USD/PHP conversion and validation"""
@@ -423,17 +440,17 @@ class AITradingBot:
             # Validate price levels
             price_validation = self.validate_price_levels(current_price, ai_prices_php)
             
-            logger.info(f"💱 AI Signal Conversion:")
+            logger.info(f"💱 {self.name} AI Signal Conversion:")
             logger.info(f"   Entry: ${signal.buy_price:.2f} → ₱{ai_prices_php['ai_buy_php']:.2f}")
             logger.info(f"   Target: ${signal.sell_price:.2f} → ₱{ai_prices_php['ai_target_php']:.2f}")
             logger.info(f"   Stop: ${signal.stoploss:.2f} → ₱{ai_prices_php['ai_stop_php']:.2f}")
             logger.info(f"   Rate: 1 USD = {ai_prices_php['usd_php_rate']:.4f} PHP")
             
-            logger.info(f"📊 Market Analysis:")
+            logger.info(f"📊 {self.name} Market Analysis:")
             logger.info(f"   Current: ₱{current_price:.2f}")
             logger.info(f"   Momentum: {momentum_score*100:+.1f}%")
             
-            logger.info(f"🎯 Price Level Validation:")
+            logger.info(f"🎯 {self.name} Price Level Validation:")
             logger.info(f"   Entry diff: {price_validation['entry_diff_pct']:+.1f}%")
             logger.info(f"   Upside potential: {price_validation['upside_potential']:+.1f}%")
             logger.info(f"   Downside risk: {price_validation['downside_risk']:+.1f}%")
@@ -448,7 +465,7 @@ class AITradingBot:
                 position_size = self.calculate_ai_position_size(signal.risk)
                 
                 if test_mode:
-                    logger.info(f"🧪 TEST BUY SIMULATION:")
+                    logger.info(f"🧪 {self.name} TEST BUY SIMULATION:")
                     logger.info(f"   Would buy {symbol} with ₱{position_size:.0f}")
                     logger.info(f"   Entry validation: {'✅' if price_validation['is_valid'] else '❌'}")
                     logger.info(f"   Momentum confirmation: {'✅' if momentum_score > self.momentum_buy_threshold else '❌'}")
@@ -459,30 +476,30 @@ class AITradingBot:
                     await self.place_ai_buy_order_enhanced(symbol, signal, position_size, ai_prices_php)
             else:
                 reason = self.get_rejection_reason(signal, momentum_score, price_validation)
-                logger.info(f"⏸️ AI buy signal rejected: {reason}")
+                logger.info(f"⏸️ {self.name} AI buy signal rejected: {reason}")
                 
         except Exception as e:
-            logger.error(f"❌ Error processing AI buy signal: {e}")
+            logger.error(f"❌ {self.name} error processing AI buy signal: {e}")
 
     async def process_ai_sell_signal(self, symbol: str, signal: AISignal, test_mode: bool):
         """Process AI sell signal or close existing position"""
         try:
             if test_mode:
-                logger.info(f"🧪 TEST SELL SIMULATION:")
+                logger.info(f"🧪 {self.name} TEST SELL SIMULATION:")
                 logger.info(f"   Would sell {symbol} position")
                 logger.info(f"   AI target: ${signal.sell_price:.4f}")
                 return
             
             # Check if we have an open position
             if symbol not in self.current_positions:
-                logger.info(f"⏸️ No open position for {symbol} to close")
+                logger.info(f"⏸️ {self.name}: No open position for {symbol} to close")
                 return
             
             # Execute real sell based on AI signal
             await self.place_ai_sell_order(symbol, signal, "AI Signal")
             
         except Exception as e:
-            logger.error(f"❌ Error processing AI sell signal: {e}")
+            logger.error(f"❌ {self.name} error processing AI sell signal: {e}")
 
     def validate_price_levels(self, current_php_price, ai_prices_php, tolerance=None):
         """Validate if current price is suitable for AI signal execution"""
@@ -524,24 +541,24 @@ class AITradingBot:
         
         # Risk filter: Skip very high risk signals
         if signal.risk > 8:
-            logger.info(f"⚠️ AI signal risk too high: {signal.risk}/10")
+            logger.info(f"⚠️ {self.name}: AI signal risk too high: {signal.risk}/10")
             return False
         
         # Price level validation: Must be near AI entry price
         if not price_validation['is_valid']:
-            logger.info(f"⚠️ Price level validation failed")
+            logger.info(f"⚠️ {self.name}: Price level validation failed")
             return False
         
         # Momentum confirmation: AI bullish + positive momentum
         if signal.market_direction.lower() == 'bull' and momentum > self.momentum_buy_threshold:
-            logger.info(f"✅ AI + Momentum + Price level alignment")
+            logger.info(f"✅ {self.name}: AI + Momentum + Price level alignment")
             return True
         
         # Strong AI confidence with good price level
         if (signal.risk <= 3 and 
             signal.percentage_change > 3.0 and 
             price_validation['upside_potential'] > 2.0):
-            logger.info(f"✅ High AI confidence with good price level")
+            logger.info(f"✅ {self.name}: High AI confidence with good price level")
             return True
         
         return False
@@ -578,7 +595,7 @@ class AITradingBot:
         
         adjusted_amount = self.base_amount * risk_multiplier
         
-        logger.info(f"💰 Position sizing: Risk {ai_risk}/10 → ₱{adjusted_amount:.0f} ({risk_multiplier*100:.0f}% of base)")
+        logger.info(f"💰 {self.name} Position sizing: Risk {ai_risk}/10 → ₱{adjusted_amount:.0f} ({risk_multiplier*100:.0f}% of base)")
         
         return adjusted_amount
 
@@ -591,7 +608,7 @@ class AITradingBot:
             # Place limit order slightly above market
             buy_price = current_price * 1.001
             
-            logger.info(f"🔄 Placing AI-guided BUY order:")
+            logger.info(f"🔄 {self.name} placing AI-guided BUY order:")
             logger.info(f"   Symbol: {symbol}")
             logger.info(f"   Quantity: {quantity:.6f}")
             logger.info(f"   Price: ₱{buy_price:.4f}")
@@ -621,20 +638,20 @@ class AITradingBot:
                 
                 self.update_daily_trades()
                 
-                logger.info(f"✅ AI BUY ORDER PLACED!")
+                logger.info(f"✅ {self.name} AI BUY ORDER PLACED!")
                 logger.info(f"   Order ID: {order['orderId']}")
                 
                 # Send alert
-                logger.info(f"🔔 ALERT: 🤖 AI BUY {symbol}: {quantity:.6f} at ₱{buy_price:.4f} (Target: ₱{ai_prices_php['ai_target_php']:.2f})")
+                logger.info(f"🔔 ALERT: 🤖 {self.name} BUY {symbol}: {quantity:.6f} at ₱{buy_price:.4f} (Target: ₱{ai_prices_php['ai_target_php']:.2f})")
                 
         except Exception as e:
-            logger.error(f"❌ Error placing AI buy order: {e}")
+            logger.error(f"❌ {self.name} error placing AI buy order: {e}")
 
     async def place_ai_sell_order(self, symbol: str, signal: AISignal, reason: str):
         """Place sell order based on AI signal"""
         try:
             if symbol not in self.current_positions:
-                logger.warning(f"⚠️ No position to sell for {symbol}")
+                logger.warning(f"⚠️ {self.name}: No position to sell for {symbol}")
                 return
             
             position = self.current_positions[symbol]
@@ -648,7 +665,7 @@ class AITradingBot:
             entry_price = position['entry_price']
             profit_loss = (sell_price - entry_price) / entry_price * 100
             
-            logger.info(f"🔄 Placing AI-guided SELL order:")
+            logger.info(f"🔄 {self.name} placing AI-guided SELL order:")
             logger.info(f"   Symbol: {symbol}")
             logger.info(f"   Quantity: {quantity_to_sell:.6f}")
             logger.info(f"   Price: ₱{sell_price:.4f}")
@@ -669,15 +686,15 @@ class AITradingBot:
                 del self.current_positions[symbol]
                 self.update_daily_trades()
                 
-                logger.info(f"✅ AI SELL ORDER PLACED!")
+                logger.info(f"✅ {self.name} AI SELL ORDER PLACED!")
                 logger.info(f"   Order ID: {order['orderId']}")
                 
                 # Send alert
                 profit_emoji = "🟢" if profit_loss > 0 else "🔴"
-                logger.info(f"🔔 ALERT: {profit_emoji} AI SELL {symbol}: {quantity_to_sell:.6f} at ₱{sell_price:.4f} ({profit_loss:+.1f}%)")
+                logger.info(f"🔔 ALERT: {profit_emoji} {self.name} SELL {symbol}: {quantity_to_sell:.6f} at ₱{sell_price:.4f} ({profit_loss:+.1f}%)")
                 
         except Exception as e:
-            logger.error(f"❌ Error placing AI sell order: {e}")
+            logger.error(f"❌ {self.name} error placing AI sell order: {e}")
 
     def update_price_history(self, symbol: str, price: float):
         """Update price history for momentum calculation"""
@@ -732,13 +749,13 @@ class AITradingBot:
                 
                 # Check AI target reached
                 if ai_prices_php and current_price >= ai_prices_php.get('ai_target_php', float('inf')):
-                    logger.info(f"🎯 AI target reached for {symbol}!")
+                    logger.info(f"🎯 {self.name}: AI target reached for {symbol}!")
                     await self.place_ai_sell_order(symbol, signal, "AI Target Reached")
                     continue
                 
                 # Check AI stop loss
                 if ai_prices_php and current_price <= ai_prices_php.get('ai_stop_php', 0):
-                    logger.info(f"⛔ AI stop loss triggered for {symbol}!")
+                    logger.info(f"⛔ {self.name}: AI stop loss triggered for {symbol}!")
                     await self.place_ai_sell_order(symbol, signal, "AI Stop Loss")
                     continue
                 
@@ -749,16 +766,16 @@ class AITradingBot:
                     # Check momentum-based exit
                     momentum = self.calculate_momentum_score(symbol)
                     if momentum < -self.momentum_sell_threshold:
-                        logger.info(f"📉 Momentum exit for {symbol}")
+                        logger.info(f"📉 {self.name}: Momentum exit for {symbol}")
                         await self.place_ai_sell_order(symbol, signal, "Momentum Exit")
                         continue
                 
             except Exception as e:
-                logger.error(f"❌ Error monitoring {symbol}: {e}")
+                logger.error(f"❌ {self.name} error monitoring {symbol}: {e}")
 
     async def start_monitoring_loop(self):
         """Start the monitoring loop for existing positions"""
-        logger.info(f"📊 Starting position monitoring loop")
+        logger.info(f"📊 {self.name}: Starting position monitoring loop")
         
         while self.running:
             try:
@@ -766,15 +783,15 @@ class AITradingBot:
                     await self.monitor_positions()
                 await asyncio.sleep(300)  # Check every 5 minutes
             except Exception as e:
-                logger.error(f"❌ Monitoring error: {e}")
+                logger.error(f"❌ {self.name} monitoring error: {e}")
                 await asyncio.sleep(60)
 
     async def start_server(self, port: int = 8000):
         """Start the webhook server with monitoring"""
         logger.info("=" * 80)
-        logger.info("🚀 AI-ENHANCED TRADING BOT V4 - COMPLETE EDITION")
+        logger.info(f"🔮 {self.name} - {self.description} v{self.version}")
         logger.info("=" * 80)
-        logger.info(f"🤖 Version: {self.version}")
+        logger.info(f"🤖 Bot: {self.name}")
         logger.info(f"🌐 Webhook server starting on port {port}")
         logger.info(f"📡 Health check: http://localhost:{port}/health")
         logger.info(f"📊 Status: http://localhost:{port}/status")
@@ -784,7 +801,7 @@ class AITradingBot:
         logger.info(f"💰 Base amount: ₱{self.base_amount}")
         logger.info(f"🎯 Price tolerance: {self.price_tolerance}%")
         logger.info("")
-        logger.info("🌟 FEATURES ENABLED:")
+        logger.info("🌟 ORACLE FEATURES ENABLED:")
         logger.info("   ✅ MarketRaker AI signal processing")
         logger.info("   ✅ Real-time USD/PHP conversion")
         logger.info("   ✅ Momentum confirmation logic")
@@ -805,7 +822,7 @@ class AITradingBot:
         try:
             await asyncio.gather(webhook_task, monitoring_task)
         except KeyboardInterrupt:
-            logger.info("🛑 Server stopped by user")
+            logger.info(f"🛑 {self.name} server stopped by user")
         finally:
             self.running = False
 
@@ -823,7 +840,7 @@ class AITradingBot:
 
 def main():
     """Main function with comprehensive startup checks"""
-    logger.info("🔍 Checking configuration...")
+    logger.info("🔍 Checking ORACLE configuration...")
     
     # Check API credentials
     if not os.getenv('COINS_API_KEY') or not os.getenv('COINS_SECRET_KEY'):
@@ -842,7 +859,7 @@ def main():
     
     # Display startup configuration
     logger.info("=" * 60)
-    logger.info("🎯 STARTUP CONFIGURATION:")
+    logger.info("🎯 ORACLE STARTUP CONFIGURATION:")
     logger.info(f"   Base amount: ₱200")
     logger.info(f"   Price tolerance: 3.0%")
     logger.info(f"   Exchange rate cache: 60 minutes")
@@ -850,12 +867,12 @@ def main():
     logger.info("=" * 60)
     
     # Initialize bot
-    bot = AITradingBot(base_amount=200)
+    bot = OracleAITradingBot(base_amount=200)
     
     try:
         asyncio.run(bot.start_server(port=8000))
     except KeyboardInterrupt:
-        logger.info("👋 Goodbye!")
+        logger.info(f"👋 {bot.name} goodbye!")
 
 if __name__ == '__main__':
     main()

@@ -22,20 +22,32 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('momentum_v3.log', encoding='utf-8'),  # UTF-8 encoding
+        logging.FileHandler('titan.log', encoding='utf-8'),  # UTF-8 encoding
         logging.StreamHandler()
     ]
 )
 
-logger = logging.getLogger('MomentumTradingBot_v3')
+logger = logging.getLogger('TitanTradingBot')
 
-class MomentumTradingBot:
+class TitanTradingBot:
+    """
+    🤖 TITAN - Advanced Momentum Trading Bot v3.0
+    
+    Pure momentum-based trading with configurable take profit levels.
+    Optimized for high-frequency crypto trading on Coins.ph.
+    """
+    
     def __init__(self, symbol='XRPPHP', take_profit_pct=5.0):
         # Initialize API
         self.api = CoinsAPI(
             api_key=os.getenv('COINS_API_KEY'),
             secret_key=os.getenv('COINS_SECRET_KEY')
         )
+        
+        # Bot identity
+        self.name = "TITAN"
+        self.version = "3.0.0"
+        self.description = "Advanced Momentum Trading Bot"
         
         # Trading parameters - now configurable!
         self.symbol = symbol
@@ -62,7 +74,7 @@ class MomentumTradingBot:
         self.daily_trades = {}
 
         # Display configuration
-        logger.info(f"🚀 Momentum Trading Bot v3.0 initialized")
+        logger.info(f"🤖 {self.name} - {self.description} v{self.version} initialized")
         logger.info(f"🎯 Asset: {self.symbol} ({self.base_asset}/PHP)")
         logger.info(f"📈 Buy threshold: {self.buy_threshold*100:.1f}%")
         logger.info(f"📉 Sell threshold: {self.sell_threshold*100:.1f}%")
@@ -247,7 +259,7 @@ class MomentumTradingBot:
             # Use limit order slightly above market for better fill probability
             buy_price = price * 1.001  # 0.1% above market
             
-            logger.info(f"🔄 Attempting BUY: {quantity:.6f} {self.base_asset} at ₱{buy_price:.4f}")
+            logger.info(f"🔄 {self.name} attempting BUY: {quantity:.6f} {self.base_asset} at ₱{buy_price:.4f}")
             logger.info(f"   💰 Amount: ₱{amount_to_spend:.2f} | Change: {change*100:+.2f}% | Trend: {trend*100:+.1f}%")
             
             # Place the order
@@ -266,17 +278,17 @@ class MomentumTradingBot:
                 self.entry_time = datetime.now()
                 self.update_daily_trades()
                 
-                logger.info(f"✅ BUY ORDER PLACED!")
+                logger.info(f"✅ {self.name} BUY ORDER PLACED!")
                 logger.info(f"   Order ID: {order['orderId']}")
                 logger.info(f"   Quantity: {quantity:.6f} {self.base_asset}")
                 logger.info(f"   Price: ₱{buy_price:.4f}")
                 logger.info(f"   Amount: ₱{amount_to_spend:.2f}")
                 
                 # Send alert if enabled
-                self.send_alert(f"🟢 BUY {self.base_asset}: {quantity:.6f} at ₱{buy_price:.4f}")
+                self.send_alert(f"🟢 {self.name} BUY {self.base_asset}: {quantity:.6f} at ₱{buy_price:.4f}")
                 
             else:
-                logger.error(f"❌ BUY ORDER FAILED: {order}")
+                logger.error(f"❌ {self.name} BUY ORDER FAILED: {order}")
                 
         except Exception as e:
             logger.error(f"❌ Error placing buy order: {e}")
@@ -296,7 +308,7 @@ class MomentumTradingBot:
             sell_price = price * 0.999  # 0.1% below market
             gross_amount = quantity_to_sell * sell_price
             
-            logger.info(f"🔄 Attempting SELL: {quantity_to_sell:.6f} {self.base_asset} at ₱{sell_price:.4f}")
+            logger.info(f"🔄 {self.name} attempting SELL: {quantity_to_sell:.6f} {self.base_asset} at ₱{sell_price:.4f}")
             logger.info(f"   💰 Amount: ₱{gross_amount:.2f} | Reason: {reason}")
             
             # Calculate P/L if we have entry price
@@ -321,7 +333,7 @@ class MomentumTradingBot:
                 self.entry_time = None
                 self.update_daily_trades()
                 
-                logger.info(f"✅ SELL ORDER PLACED!")
+                logger.info(f"✅ {self.name} SELL ORDER PLACED!")
                 logger.info(f"   Order ID: {order['orderId']}")
                 logger.info(f"   Quantity: {quantity_to_sell:.6f} {self.base_asset}")
                 logger.info(f"   Price: ₱{sell_price:.4f}")
@@ -330,10 +342,10 @@ class MomentumTradingBot:
                 
                 # Send alert if enabled
                 profit_emoji = "🟢" if reason == "Take Profit" else "🔴"
-                self.send_alert(f"{profit_emoji} SELL {self.base_asset}: {quantity_to_sell:.6f} at ₱{sell_price:.4f} ({reason})")
+                self.send_alert(f"{profit_emoji} {self.name} SELL {self.base_asset}: {quantity_to_sell:.6f} at ₱{sell_price:.4f} ({reason})")
                 
             else:
-                logger.error(f"❌ SELL ORDER FAILED: {order}")
+                logger.error(f"❌ {self.name} SELL ORDER FAILED: {order}")
                 
         except Exception as e:
             logger.error(f"❌ Error placing sell order: {e}")
@@ -351,7 +363,7 @@ class MomentumTradingBot:
         today = datetime.now().strftime('%Y-%m-%d')
         daily_trades = self.daily_trades.get(today, 0)
         
-        logger.info(f"🤖 Bot Status: {status}")
+        logger.info(f"🤖 {self.name} Status: {status}")
         logger.info(f"🎯 Trading: {self.symbol} with {self.take_profit_pct*100:.1f}% take profit")
         logger.info(f"{position_status}")
         logger.info(f"📈 Daily trades: {daily_trades}/{self.max_trades_per_day}")
@@ -362,7 +374,7 @@ class MomentumTradingBot:
 
     def start(self):
         """Start the trading bot"""
-        logger.info(f"🚀 Starting Momentum Trading Bot v3.0")
+        logger.info(f"🚀 Starting {self.name} - {self.description} v{self.version}")
         logger.info(f"🎯 Asset: {self.symbol} | Take Profit: {self.take_profit_pct*100:.1f}%")
         
         # Validate setup
@@ -375,7 +387,7 @@ class MomentumTradingBot:
             return
         
         logger.info(f"✅ Setup validated successfully!")
-        logger.info(f"🔄 Bot will check every {self.check_interval//60} minutes")
+        logger.info(f"🔄 {self.name} will check every {self.check_interval//60} minutes")
         logger.info(f"📊 Press Ctrl+C to stop")
         
         self.running = True
@@ -391,7 +403,7 @@ class MomentumTradingBot:
                 time.sleep(self.check_interval)
                 
         except KeyboardInterrupt:
-            logger.info("🛑 Bot stopped by user")
+            logger.info(f"🛑 {self.name} stopped by user")
             self.stop()
         except Exception as e:
             logger.error(f"❌ Unexpected error: {e}")
@@ -400,11 +412,11 @@ class MomentumTradingBot:
     def stop(self):
         """Stop the trading bot"""
         self.running = False
-        logger.info("🛑 Momentum Trading Bot v3.0 stopped")
+        logger.info(f"🛑 {self.name} - {self.description} v{self.version} stopped")
 
 def get_user_inputs():
     """Get trading parameters from user"""
-    print("🚀 MOMENTUM TRADING BOT v3.0")
+    print("🤖 TITAN - Advanced Momentum Trading Bot v3.0")
     print("💡 Choose your trading asset and take profit level")
     print("=" * 60)
     
@@ -476,15 +488,15 @@ def main():
     symbol, take_profit = get_user_inputs()
     
     # Confirm start
-    print(f"\n🚀 Ready to start live trading!")
+    print(f"\n🚀 Ready to start live trading with TITAN!")
     confirm = input("Start the bot? (y/n): ").lower().strip()
     
     if confirm.startswith('y'):
         # Initialize and start bot
-        bot = MomentumTradingBot(symbol=symbol, take_profit_pct=take_profit)
+        bot = TitanTradingBot(symbol=symbol, take_profit_pct=take_profit)
         bot.start()
     else:
-        print("👋 Bot startup cancelled")
+        print("👋 TITAN startup cancelled")
 
 if __name__ == '__main__':
     main()
