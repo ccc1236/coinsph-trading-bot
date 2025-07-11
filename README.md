@@ -32,8 +32,7 @@ Beginner momentum-based automated trading bot for Coins.ph cryptocurrency market
 - `test_account.py` - Simple account access verification
 
 ### **Configuration**
-- `config.yaml` - Strategy parameters (thresholds, trade sizes, timing)
-- `.env.example` - Environment variables template
+- `.env.example` - Environment variables template (API keys)
 - `requirements.txt` - Python dependencies
 
 ---
@@ -92,8 +91,8 @@ python momentum_v3.py
 ```
 
 **Interactive Setup:**
-- Choose trading asset
-- Set take profit level
+- Choose trading asset (XRPPHP recommended)
+- Set take profit level (5.0% recommended for XRPPHP)
 - Confirm configuration and start trading
 
 ---
@@ -156,17 +155,23 @@ python check_volumes.py
 
 ## 💡 Configuration Options
 
-### **Strategy Parameters** (`config.yaml`)
-```yaml
-trade:
-  base_amount_php: 200          # ₱ per trade
-  buy_threshold_pct: 0.6        # Buy momentum trigger
-  sell_threshold_pct: 1.0       # Sell momentum trigger
-  min_hold_hours: 0.5           # Minimum position time
-  max_trades_per_day: 10        # Safety limit
+### **Strategy Parameters**
+All strategy parameters are **optimized and hard-coded** in `momentum_v3.py` for stability and performance:
 
-# Take profit set interactively in momentum_v3.py
+```python
+# Optimized parameters (tested via backtesting)
+self.buy_threshold = 0.006      # 0.6% momentum trigger
+self.sell_threshold = 0.010     # 1.0% decline trigger  
+self.base_amount = 200          # ₱200 per trade
+self.min_hold_hours = 0.5       # 30 minutes minimum hold
+self.max_trades_per_day = 10    # Daily safety limit
+self.check_interval = 900       # 15 minutes between checks
 ```
+
+### **Interactive Configuration**
+When starting the bot, you'll configure:
+- **Trading Asset**: XRPPHP (recommended), SOLPHP, or custom pair
+- **Take Profit Level**: Optimized suggestions provided based on backtesting
 
 ### **Asset Selection**
 - **XRPPHP**: Recommended (stable, good liquidity, proven profitable)
