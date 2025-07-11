@@ -1,7 +1,7 @@
 """
 USD/PHP Exchange Rate API Integration Options
 
-Free APIs with good limits for our trading bot
+Free APIs with good limits for our trading bo
 """
 
 import requests
