@@ -17,18 +17,6 @@ except AttributeError:
 # Load environment variables
 load_dotenv(override=True)
 
-# Setup logging with UTF-8 encoding for file handler
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('titan.log', encoding='utf-8'),  # UTF-8 encoding
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger('TitanTradingBot')
-
 class TitanTradingBot:
     """
     🤖 TITAN - Advanced Momentum Trading Bot v3.0
@@ -38,12 +26,6 @@ class TitanTradingBot:
     """
     
     def __init__(self, symbol='XRPPHP', take_profit_pct=5.0):
-        # Initialize API
-        self.api = CoinsAPI(
-            api_key=os.getenv('COINS_API_KEY'),
-            secret_key=os.getenv('COINS_SECRET_KEY')
-        )
-        
         # Bot identity
         self.name = "TITAN"
         self.version = "3.0.0"
@@ -53,6 +35,15 @@ class TitanTradingBot:
         self.symbol = symbol
         self.base_asset = symbol.replace('PHP', '')  # SOL, XRP, etc.
         self.quote_asset = 'PHP'
+        
+        # Setup asset-specific logging BEFORE any logging calls
+        self.setup_logging()
+        
+        # Initialize API
+        self.api = CoinsAPI(
+            api_key=os.getenv('COINS_API_KEY'),
+            secret_key=os.getenv('COINS_SECRET_KEY')
+        )
         
         # Strategy parameters (optimized from backtesting)
         self.buy_threshold = 0.006      # 0.6% momentum trigger
@@ -74,25 +65,57 @@ class TitanTradingBot:
         self.daily_trades = {}
 
         # Display configuration
-        logger.info(f"🤖 {self.name} - {self.description} v{self.version} initialized")
-        logger.info(f"🎯 Asset: {self.symbol} ({self.base_asset}/PHP)")
-        logger.info(f"📈 Buy threshold: {self.buy_threshold*100:.1f}%")
-        logger.info(f"📉 Sell threshold: {self.sell_threshold*100:.1f}%")
-        logger.info(f"🎯 Take profit: {take_profit_pct:.1f}%")
-        logger.info(f"💰 Trade amount: ₱{self.base_amount}")
-        logger.info(f"⏰ Min hold time: {self.min_hold_hours}h")
-        logger.info(f"🔄 Max trades/day: {self.max_trades_per_day}")
-        logger.info(f"📊 Check interval: {self.check_interval//60} minutes")
+        self.logger.info(f"🤖 {self.name} - {self.description} v{self.version} initialized")
+        self.logger.info(f"🎯 Asset: {self.symbol} ({self.base_asset}/PHP)")
+        self.logger.info(f"📈 Buy threshold: {self.buy_threshold*100:.1f}%")
+        self.logger.info(f"📉 Sell threshold: {self.sell_threshold*100:.1f}%")
+        self.logger.info(f"🎯 Take profit: {take_profit_pct:.1f}%")
+        self.logger.info(f"💰 Trade amount: ₱{self.base_amount}")
+        self.logger.info(f"⏰ Min hold time: {self.min_hold_hours}h")
+        self.logger.info(f"🔄 Max trades/day: {self.max_trades_per_day}")
+        self.logger.info(f"📊 Check interval: {self.check_interval//60} minutes")
+
+    def setup_logging(self):
+        """Setup asset-specific logging with dynamic file names"""
+        # Create logs directory if it doesn't exist
+        os.makedirs('logs', exist_ok=True)
+        
+        # Create asset-specific log filename
+        log_filename = f"logs/titan_{self.base_asset.lower()}.log"
+        
+        # Create custom logger for this TITAN instance
+        self.logger = logging.getLogger(f'TitanTradingBot_{self.base_asset}')
+        self.logger.setLevel(logging.INFO)
+        
+        # Clear any existing handlers to avoid duplicates
+        self.logger.handlers.clear()
+        
+        # Create formatters
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        
+        # File handler with asset-specific filename
+        file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+        file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
+        
+        # Console handler (optional - shows in terminal)
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        self.logger.addHandler(console_handler)
+        
+        # Log the setup
+        self.logger.info(f"📝 Logging initialized for {self.symbol}")
+        self.logger.info(f"📁 Log file: {log_filename}")
 
     def get_symbol_info(self):
         """Get trading symbol information"""
         try:
             symbol_info = self.api.get_symbol_info(self.symbol)
             if symbol_info:
-                logger.info(f"✅ Symbol {self.symbol} found and active")
-                logger.info(f"   Status: {symbol_info.get('status')}")
-                logger.info(f"   Base: {symbol_info.get('baseAsset')}")
-                logger.info(f"   Quote: {symbol_info.get('quoteAsset')}")
+                self.logger.info(f"✅ Symbol {self.symbol} found and active")
+                self.logger.info(f"   Status: {symbol_info.get('status')}")
+                self.logger.info(f"   Base: {symbol_info.get('baseAsset')}")
+                self.logger.info(f"   Quote: {symbol_info.get('quoteAsset')}")
                 
                 # Check minimum order requirements
                 filters = symbol_info.get('filters', [])
@@ -100,16 +123,16 @@ class TitanTradingBot:
                     if f.get('filterType') == 'MIN_NOTIONAL':
                         min_notional = float(f.get('minNotional', 0))
                         if min_notional > 0:
-                            logger.info(f"   Min order size: ₱{min_notional}")
+                            self.logger.info(f"   Min order size: ₱{min_notional}")
                             if self.base_amount < min_notional:
-                                logger.warning(f"⚠️ Trade amount (₱{self.base_amount}) below minimum (₱{min_notional})")
+                                self.logger.warning(f"⚠️ Trade amount (₱{self.base_amount}) below minimum (₱{min_notional})")
                 
                 return symbol_info
             else:
-                logger.error(f"❌ Symbol {self.symbol} not found!")
+                self.logger.error(f"❌ Symbol {self.symbol} not found!")
                 return None
         except Exception as e:
-            logger.error(f"❌ Error getting symbol info: {e}")
+            self.logger.error(f"❌ Error getting symbol info: {e}")
             return None
 
     def get_account_status(self):
@@ -118,7 +141,7 @@ class TitanTradingBot:
             account = self.api.get_account_info()
             
             if account.get('canTrade'):
-                logger.info("✅ Account trading enabled")
+                self.logger.info("✅ Account trading enabled")
                 
                 # Get current balances
                 balances = account.get('balances', [])
@@ -131,20 +154,20 @@ class TitanTradingBot:
                     elif balance['asset'] == self.base_asset:
                         asset_balance = float(balance['free'])
                 
-                logger.info(f"💰 PHP Balance: ₱{php_balance:,.2f}")
-                logger.info(f"💰 {self.base_asset} Balance: {asset_balance:.6f}")
+                self.logger.info(f"💰 PHP Balance: ₱{php_balance:,.2f}")
+                self.logger.info(f"💰 {self.base_asset} Balance: {asset_balance:.6f}")
                 
                 # Check if we have enough to trade
                 if php_balance < self.base_amount * 1.5:
-                    logger.warning(f"⚠️ Low PHP balance! Need at least ₱{self.base_amount * 1.5:.0f} for safe trading")
+                    self.logger.warning(f"⚠️ Low PHP balance! Need at least ₱{self.base_amount * 1.5:.0f} for safe trading")
                 
                 return account
             else:
-                logger.error("❌ Account trading disabled!")
+                self.logger.error("❌ Account trading disabled!")
                 return None
                 
         except Exception as e:
-            logger.error(f"❌ Error checking account: {e}")
+            self.logger.error(f"❌ Error checking account: {e}")
             return None
 
     def calculate_quantity(self, price, amount_php):
@@ -194,7 +217,7 @@ class TitanTradingBot:
 
             if self.last_price is None:
                 self.last_price = current_price
-                logger.info(f"📊 {self.symbol} current price: ₱{current_price:.4f}")
+                self.logger.info(f"📊 {self.symbol} current price: ₱{current_price:.4f}")
                 return
 
             # Calculate price change and trend
@@ -208,8 +231,8 @@ class TitanTradingBot:
             php_free = php_balance['free'] if php_balance else 0
             asset_free = asset_balance['free'] if asset_balance else 0
 
-            logger.info(f"📊 {self.symbol}: ₱{current_price:.4f} ({price_change*100:+.2f}%) | Trend: {trend*100:+.1f}%")
-            logger.info(f"💰 Balances: ₱{php_free:.2f} PHP, {asset_free:.6f} {self.base_asset}")
+            self.logger.info(f"📊 {self.symbol}: ₱{current_price:.4f} ({price_change*100:+.2f}%) | Trend: {trend*100:+.1f}%")
+            self.logger.info(f"💰 Balances: ₱{php_free:.2f} PHP, {asset_free:.6f} {self.base_asset}")
 
             # BUY CONDITIONS
             if (price_change > self.buy_threshold and           # Strong upward momentum
@@ -247,7 +270,7 @@ class TitanTradingBot:
             self.last_price = current_price
 
         except Exception as e:
-            logger.error(f"❌ Error in strategy execution: {e}")
+            self.logger.error(f"❌ Error in strategy execution: {e}")
 
     def place_buy_order(self, price, change, trend):
         """Place a buy order"""
@@ -259,8 +282,8 @@ class TitanTradingBot:
             # Use limit order slightly above market for better fill probability
             buy_price = price * 1.001  # 0.1% above market
             
-            logger.info(f"🔄 {self.name} attempting BUY: {quantity:.6f} {self.base_asset} at ₱{buy_price:.4f}")
-            logger.info(f"   💰 Amount: ₱{amount_to_spend:.2f} | Change: {change*100:+.2f}% | Trend: {trend*100:+.1f}%")
+            self.logger.info(f"🔄 {self.name} attempting BUY: {quantity:.6f} {self.base_asset} at ₱{buy_price:.4f}")
+            self.logger.info(f"   💰 Amount: ₱{amount_to_spend:.2f} | Change: {change*100:+.2f}% | Trend: {trend*100:+.1f}%")
             
             # Place the order
             order = self.api.place_order(
@@ -278,20 +301,20 @@ class TitanTradingBot:
                 self.entry_time = datetime.now()
                 self.update_daily_trades()
                 
-                logger.info(f"✅ {self.name} BUY ORDER PLACED!")
-                logger.info(f"   Order ID: {order['orderId']}")
-                logger.info(f"   Quantity: {quantity:.6f} {self.base_asset}")
-                logger.info(f"   Price: ₱{buy_price:.4f}")
-                logger.info(f"   Amount: ₱{amount_to_spend:.2f}")
+                self.logger.info(f"✅ {self.name} BUY ORDER PLACED!")
+                self.logger.info(f"   Order ID: {order['orderId']}")
+                self.logger.info(f"   Quantity: {quantity:.6f} {self.base_asset}")
+                self.logger.info(f"   Price: ₱{buy_price:.4f}")
+                self.logger.info(f"   Amount: ₱{amount_to_spend:.2f}")
                 
                 # Send alert if enabled
                 self.send_alert(f"🟢 {self.name} BUY {self.base_asset}: {quantity:.6f} at ₱{buy_price:.4f}")
                 
             else:
-                logger.error(f"❌ {self.name} BUY ORDER FAILED: {order}")
+                self.logger.error(f"❌ {self.name} BUY ORDER FAILED: {order}")
                 
         except Exception as e:
-            logger.error(f"❌ Error placing buy order: {e}")
+            self.logger.error(f"❌ Error placing buy order: {e}")
 
     def place_sell_order(self, price, change, trend, reason):
         """Place a sell order"""
@@ -301,20 +324,20 @@ class TitanTradingBot:
             quantity_to_sell = asset_balance['free'] * 0.99  # Sell 99% to avoid dust
             
             if quantity_to_sell < 0.001:
-                logger.warning(f"⚠️ Asset balance too low to sell: {quantity_to_sell:.6f}")
+                self.logger.warning(f"⚠️ Asset balance too low to sell: {quantity_to_sell:.6f}")
                 return
             
             # Use limit order slightly below market for better fill probability
             sell_price = price * 0.999  # 0.1% below market
             gross_amount = quantity_to_sell * sell_price
             
-            logger.info(f"🔄 {self.name} attempting SELL: {quantity_to_sell:.6f} {self.base_asset} at ₱{sell_price:.4f}")
-            logger.info(f"   💰 Amount: ₱{gross_amount:.2f} | Reason: {reason}")
+            self.logger.info(f"🔄 {self.name} attempting SELL: {quantity_to_sell:.6f} {self.base_asset} at ₱{sell_price:.4f}")
+            self.logger.info(f"   💰 Amount: ₱{gross_amount:.2f} | Reason: {reason}")
             
             # Calculate P/L if we have entry price
             if self.entry_price:
                 profit_loss = (sell_price - self.entry_price) / self.entry_price * 100
-                logger.info(f"   📊 P/L: {profit_loss:+.2f}%")
+                self.logger.info(f"   📊 P/L: {profit_loss:+.2f}%")
             
             # Place the order
             order = self.api.place_order(
@@ -333,27 +356,27 @@ class TitanTradingBot:
                 self.entry_time = None
                 self.update_daily_trades()
                 
-                logger.info(f"✅ {self.name} SELL ORDER PLACED!")
-                logger.info(f"   Order ID: {order['orderId']}")
-                logger.info(f"   Quantity: {quantity_to_sell:.6f} {self.base_asset}")
-                logger.info(f"   Price: ₱{sell_price:.4f}")
-                logger.info(f"   Amount: ₱{gross_amount:.2f}")
-                logger.info(f"   Reason: {reason}")
+                self.logger.info(f"✅ {self.name} SELL ORDER PLACED!")
+                self.logger.info(f"   Order ID: {order['orderId']}")
+                self.logger.info(f"   Quantity: {quantity_to_sell:.6f} {self.base_asset}")
+                self.logger.info(f"   Price: ₱{sell_price:.4f}")
+                self.logger.info(f"   Amount: ₱{gross_amount:.2f}")
+                self.logger.info(f"   Reason: {reason}")
                 
                 # Send alert if enabled
                 profit_emoji = "🟢" if reason == "Take Profit" else "🔴"
                 self.send_alert(f"{profit_emoji} {self.name} SELL {self.base_asset}: {quantity_to_sell:.6f} at ₱{sell_price:.4f} ({reason})")
                 
             else:
-                logger.error(f"❌ {self.name} SELL ORDER FAILED: {order}")
+                self.logger.error(f"❌ {self.name} SELL ORDER FAILED: {order}")
                 
         except Exception as e:
-            logger.error(f"❌ Error placing sell order: {e}")
+            self.logger.error(f"❌ Error placing sell order: {e}")
 
     def send_alert(self, message):
         """Send alert notification (placeholder for future implementation)"""
         # TODO: Implement Slack/Telegram notifications
-        logger.info(f"🔔 ALERT: {message}")
+        self.logger.info(f"🔔 ALERT: {message}")
 
     def display_status(self):
         """Display current bot status"""
@@ -363,32 +386,32 @@ class TitanTradingBot:
         today = datetime.now().strftime('%Y-%m-%d')
         daily_trades = self.daily_trades.get(today, 0)
         
-        logger.info(f"🤖 {self.name} Status: {status}")
-        logger.info(f"🎯 Trading: {self.symbol} with {self.take_profit_pct*100:.1f}% take profit")
-        logger.info(f"{position_status}")
-        logger.info(f"📈 Daily trades: {daily_trades}/{self.max_trades_per_day}")
+        self.logger.info(f"🤖 {self.name} Status: {status}")
+        self.logger.info(f"🎯 Trading: {self.symbol} with {self.take_profit_pct*100:.1f}% take profit")
+        self.logger.info(f"{position_status}")
+        self.logger.info(f"📈 Daily trades: {daily_trades}/{self.max_trades_per_day}")
         
         if self.entry_price:
-            logger.info(f"📊 Entry price: ₱{self.entry_price:.4f}")
-            logger.info(f"⏰ Entry time: {self.entry_time.strftime('%H:%M:%S')}")
+            self.logger.info(f"📊 Entry price: ₱{self.entry_price:.4f}")
+            self.logger.info(f"⏰ Entry time: {self.entry_time.strftime('%H:%M:%S')}")
 
     def start(self):
         """Start the trading bot"""
-        logger.info(f"🚀 Starting {self.name} - {self.description} v{self.version}")
-        logger.info(f"🎯 Asset: {self.symbol} | Take Profit: {self.take_profit_pct*100:.1f}%")
+        self.logger.info(f"🚀 Starting {self.name} - {self.description} v{self.version}")
+        self.logger.info(f"🎯 Asset: {self.symbol} | Take Profit: {self.take_profit_pct*100:.1f}%")
         
         # Validate setup
         if not self.get_symbol_info():
-            logger.error("❌ Symbol validation failed!")
+            self.logger.error("❌ Symbol validation failed!")
             return
             
         if not self.get_account_status():
-            logger.error("❌ Account validation failed!")
+            self.logger.error("❌ Account validation failed!")
             return
         
-        logger.info(f"✅ Setup validated successfully!")
-        logger.info(f"🔄 {self.name} will check every {self.check_interval//60} minutes")
-        logger.info(f"📊 Press Ctrl+C to stop")
+        self.logger.info(f"✅ Setup validated successfully!")
+        self.logger.info(f"🔄 {self.name} will check every {self.check_interval//60} minutes")
+        self.logger.info(f"📊 Press Ctrl+C to stop")
         
         self.running = True
         
@@ -397,22 +420,22 @@ class TitanTradingBot:
                 self.display_status()
                 self.momentum_strategy()
                 
-                logger.info(f"⏰ Waiting {self.check_interval//60} minutes until next check...")
-                logger.info("=" * 60)
+                self.logger.info(f"⏰ Waiting {self.check_interval//60} minutes until next check...")
+                self.logger.info("=" * 60)
                 
                 time.sleep(self.check_interval)
                 
         except KeyboardInterrupt:
-            logger.info(f"🛑 {self.name} stopped by user")
+            self.logger.info(f"🛑 {self.name} stopped by user")
             self.stop()
         except Exception as e:
-            logger.error(f"❌ Unexpected error: {e}")
+            self.logger.error(f"❌ Unexpected error: {e}")
             self.stop()
 
     def stop(self):
         """Stop the trading bot"""
         self.running = False
-        logger.info(f"🛑 {self.name} - {self.description} v{self.version} stopped")
+        self.logger.info(f"🛑 {self.name} - {self.description} v{self.version} stopped")
 
 def get_user_inputs():
     """Get trading parameters from user"""
@@ -473,6 +496,7 @@ def get_user_inputs():
     print(f"📈 Take Profit: {take_profit:.1f}%")
     print(f"💰 Trade Size: ₱200")
     print(f"⏰ Check Interval: 15 minutes")
+    print(f"📁 Log File: logs/titan_{symbol.replace('PHP', '').lower()}.log")
     
     return symbol, take_profit
 
