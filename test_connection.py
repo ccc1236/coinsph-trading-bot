@@ -1,7 +1,7 @@
 import os
 import logging
 from dotenv import load_dotenv
-from coinsph_api import CoinsAPI
+from coinsph_api_v2 import CoinsAPI
 
 # Load environment variables
 load_dotenv(override=True)
