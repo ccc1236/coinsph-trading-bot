@@ -1,7 +1,7 @@
 """
 🔬 COMPREHENSIVE MOMENTUM BACKTESTING ENGINE v44
 
-Advanced backtesting system for momentum trading strategies with detailed
+Backtesting system for momentum trading strategies with detailed
 performance analysis, risk metrics, and strategy optimization.
 
 Features:
