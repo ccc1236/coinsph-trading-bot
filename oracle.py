@@ -15,6 +15,7 @@ momentum confirmation, and advanced risk management.
 - ✅ Test mode for safe development
 - ✅ Multiple API fallbacks
 - ✅ Enhanced decision making logic
+- ✅ FIXED: Direct MarketRaker format support
 """
 
 import sys
@@ -302,7 +303,7 @@ class OracleAITradingBot:
         
         @self.app.post("/webhook/marketraker")
         async def receive_ai_signal(request: Request):
-            """Receive and process MarketRaker AI signals with signature verification"""
+            """Receive and process MarketRaker AI signals - FIXED for direct format"""
             try:
                 # Get payload and signature
                 payload = await request.body()
@@ -327,15 +328,26 @@ class OracleAITradingBot:
                 signal_data = json.loads(payload.decode('utf-8'))
                 
                 logger.info(f"🎯 {self.name}: MarketRaker AI Signal received!")
-                logger.info(f"   Type: {signal_data.get('type')}")
+                logger.info(f"   Raw signal keys: {list(signal_data.keys())}")
                 logger.info(f"   Signature: {'✅ Valid' if verification_key and signature else '⚠️ No verification'}")
                 
+                # FIXED: Handle both MarketRaker direct format and wrapped format
                 if signal_data.get('type') == 'indicator':
+                    # Wrapped format: {"type": "indicator", "data": {...}}
+                    logger.info(f"   Format: Wrapped indicator")
                     await self.process_ai_signal(signal_data['data'])
                     return JSONResponse({"status": "success", "message": f"{self.name} signal processed"})
+                elif 'trading_type' in signal_data:
+                    # Direct MarketRaker format: {"trading_type": "Long", "buy_price": 2.45, ...}
+                    logger.info(f"   Format: Direct MarketRaker")
+                    logger.info(f"   Trading type: {signal_data.get('trading_type')}")
+                    logger.info(f"   Trading pair: {signal_data.get('trading_pair')}")
+                    await self.process_ai_signal(signal_data)
+                    return JSONResponse({"status": "success", "message": f"{self.name} MarketRaker signal processed"})
                 else:
-                    logger.warning(f"⚠️ {self.name}: Unknown signal type: {signal_data.get('type')}")
-                    return JSONResponse({"status": "ignored", "message": "Unknown signal type"})
+                    logger.warning(f"⚠️ {self.name}: Unknown signal format")
+                    logger.debug(f"   Signal data: {signal_data}")
+                    return JSONResponse({"status": "ignored", "message": "Unknown signal format"})
                     
             except Exception as e:
                 logger.error(f"❌ {self.name} MarketRaker webhook error: {e}")
@@ -349,11 +361,19 @@ class OracleAITradingBot:
                 signal_data = json.loads(payload.decode('utf-8'))
                 
                 logger.info(f"📨 {self.name}: Test webhook received!")
-                logger.info(f"   Signal: {signal_data['data']['trading_type']} {signal_data['data']['trading_pair']}")
+                
+                # Handle both formats for test endpoint too
+                if signal_data.get('type') == 'indicator':
+                    signal_to_process = signal_data['data']
+                elif 'trading_type' in signal_data:
+                    signal_to_process = signal_data
+                else:
+                    return JSONResponse({"status": "error", "message": "Unknown signal format"}, status_code=400)
+                
+                logger.info(f"   Signal: {signal_to_process.get('trading_type')} {signal_to_process.get('trading_pair')}")
                 
                 # Process signal in test mode
-                if signal_data.get('type') == 'indicator':
-                    await self.process_ai_signal(signal_data['data'], test_mode=True)
+                await self.process_ai_signal(signal_to_process, test_mode=True)
                 
                 return JSONResponse({
                     "status": "success", 
@@ -809,6 +829,7 @@ class OracleAITradingBot:
         logger.info("   ✅ Risk-based position sizing")
         logger.info("   ✅ Comprehensive monitoring")
         logger.info("   ✅ Test mode safety")
+        logger.info("   ✅ FIXED: Direct MarketRaker format support")
         logger.info("")
         logger.info("   Press Ctrl+C to stop")
         logger.info("=" * 80)
