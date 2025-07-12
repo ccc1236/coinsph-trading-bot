@@ -173,7 +173,12 @@ class OracleAITradingBot:
             'XRP/USD': 'XRPPHP',
             'SOL/USD': 'SOLPHP', 
             'BTC/USD': 'BTCPHP',
-            'ETH/USD': 'ETHPHP'
+            'ETH/USD': 'ETHPHP',
+            'BNB/USD': 'BNBPHP'
+            # Meme coins (disabled for now)
+            # 'DOGE/USD': 'DOGEPHP',
+            # 'SHIB/USD': 'SHIBPHP',
+            # 'PEPE/USD': 'PEPEPHP'
         }
         
         # Strategy Parameters (from Titan)
