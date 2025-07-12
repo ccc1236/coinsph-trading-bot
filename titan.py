@@ -87,6 +87,9 @@ class TitanTradingBot:
         self.logger = logging.getLogger(f'TitanTradingBot_{self.base_asset}')
         self.logger.setLevel(logging.INFO)
         
+        # CRITICAL: Prevent propagation to root logger (fixes duplicate output)
+        self.logger.propagate = False
+        
         # Clear any existing handlers to avoid duplicates
         self.logger.handlers.clear()
         
