@@ -24,6 +24,7 @@ import logging
 import asyncio
 import json
 import requests
+import time
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
@@ -173,12 +174,7 @@ class OracleAITradingBot:
             'XRP/USD': 'XRPPHP',
             'SOL/USD': 'SOLPHP', 
             'BTC/USD': 'BTCPHP',
-            'ETH/USD': 'ETHPHP',
-            'BNB/USD': 'BNBPHP'
-            # Meme coins (disabled for now)
-            # 'DOGE/USD': 'DOGEPHP',
-            # 'SHIB/USD': 'SHIBPHP',
-            # 'PEPE/USD': 'PEPEPHP'
+            'ETH/USD': 'ETHPHP'
         }
         
         # Strategy Parameters (from Titan)
@@ -415,15 +411,65 @@ class OracleAITradingBot:
             }
 
     async def process_ai_signal(self, signal_data: Dict[str, Any], test_mode: Optional[bool] = None):
-        """Process incoming AI signal with complete analysis"""
+        """Process incoming AI signal with complete analysis - FIXED for MarketRaker format"""
         try:
-            # Parse AI signal
-            signal = AISignal(**signal_data)
+            logger.info(f"🔍 Processing signal data type: {type(signal_data)}")
+            logger.info(f"🔍 Signal data content: {signal_data}")
+            
+            # Handle different data formats from MarketRaker
+            if isinstance(signal_data, str):
+                # If data is a string, try to parse it as JSON
+                try:
+                    signal_data = json.loads(signal_data)
+                    logger.info(f"✅ Parsed string data to dict: {signal_data}")
+                except json.JSONDecodeError as e:
+                    logger.error(f"❌ Failed to parse signal data as JSON: {e}")
+                    return
+            
+            # Ensure signal_data is a dictionary
+            if not isinstance(signal_data, dict):
+                logger.error(f"❌ Signal data is not a dictionary: {type(signal_data)}")
+                return
+            
+            # Check if required fields exist
+            required_fields = ['trading_type', 'buy_price', 'sell_price', 'trading_pair']
+            missing_fields = [field for field in required_fields if field not in signal_data]
+            
+            if missing_fields:
+                logger.error(f"❌ Missing required fields: {missing_fields}")
+                logger.error(f"Available fields: {list(signal_data.keys())}")
+                return
+            
+            # Create AISignal with proper error handling
+            try:
+                # Fill in default values for missing optional fields
+                signal_dict = {
+                    'trading_type': signal_data.get('trading_type'),
+                    'leverage': signal_data.get('leverage', 1),
+                    'buy_price': float(signal_data.get('buy_price')),
+                    'sell_price': float(signal_data.get('sell_price')),
+                    'buy_date': signal_data.get('buy_date', int(time.time())),
+                    'sell_prediction_date': signal_data.get('sell_prediction_date', int(time.time()) + 86400),
+                    'risk': signal_data.get('risk', 5),
+                    'market_direction': signal_data.get('market_direction', 'Bull'),
+                    'percentage_change': signal_data.get('percentage_change', 0.0),
+                    'stoploss': float(signal_data.get('stoploss', signal_data.get('buy_price', 0) * 0.95)),
+                    'trading_pair': signal_data.get('trading_pair')
+                }
+                
+                signal = AISignal(**signal_dict)
+                logger.info(f"✅ Created AISignal successfully: {signal.trading_type} {signal.trading_pair}")
+                
+            except Exception as e:
+                logger.error(f"❌ Error creating AISignal: {e}")
+                logger.error(f"Signal data: {signal_data}")
+                return
             
             # Convert USD pair to PHP pair
             php_symbol = self.supported_pairs.get(signal.trading_pair)
             if not php_symbol:
                 logger.warning(f"⚠️ {self.name}: Unsupported trading pair: {signal.trading_pair}")
+                logger.info(f"Supported pairs: {list(self.supported_pairs.keys())}")
                 return
             
             # Use provided test_mode or default to instance setting
@@ -448,6 +494,10 @@ class OracleAITradingBot:
                 
         except Exception as e:
             logger.error(f"❌ {self.name} error processing AI signal: {e}")
+            logger.error(f"Signal data type: {type(signal_data)}")
+            logger.error(f"Signal data: {signal_data}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
     async def process_ai_buy_signal(self, symbol: str, signal: AISignal, test_mode: bool):
         """Process AI buy signal with complete USD/PHP conversion and validation"""
