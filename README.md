@@ -6,9 +6,11 @@
 
 ## 🌟 Meet the Bots
 
-### 🤖 **TITAN** - Advanced Momentum Trading Bot v3.0
-**Pure momentum-based trading with configurable take profit levels**
-- ✅ **High-frequency momentum trading** with optimized parameters
+### 🤖 **TITAN** - Advanced Momentum Trading Bot v3.3
+**Pure momentum-based trading with dynamic position sizing and intelligent configuration**
+- ✅ **4 Position Sizing Strategies** - Fixed, Percentage, Momentum, and Adaptive sizing
+- ✅ **Interactive Setup Wizard** - Asset-specific recommendations and risk analysis
+- ✅ **Dynamic Risk Management** - Smart position adjustments based on market conditions
 - ✅ **Configurable take profit levels** (0.5% - 10%)
 - ✅ **Real-time trend analysis** with 12-hour windows
 - ✅ **Smart risk management** with daily limits and minimum hold times
@@ -30,7 +32,7 @@
 ## 📂 Repository Structure
 
 ### **🤖 Trading Bots**
-- `titan.py` - **TITAN** momentum trading bot with configurable take profit
+- `titan.py` - **TITAN** momentum trading bot with dynamic position sizing
 - `oracle.py` - **ORACLE** AI-enhanced trading bot with MarketRaker integration
 
 ### **🔧 Core Infrastructure**
@@ -98,9 +100,10 @@ python test_connection.py
 ```bash
 python titan.py
 ```
-- Interactive setup with asset selection
-- Configurable take profit levels
-- Immediate momentum-based trading
+- Interactive setup wizard with intelligent recommendations
+- Choose from 4 position sizing strategies
+- Configurable take profit levels based on backtesting
+- Asset-specific risk analysis
 
 #### **🔮 Start ORACLE (AI Bot)**
 ```bash
@@ -112,39 +115,85 @@ python oracle.py
 
 ---
 
-## 🤖 TITAN - Momentum Trading Bot
+## 🤖 TITAN - Advanced Momentum Trading Bot v3.3
 
-### **🎯 Core Features**
-- **Pure Momentum Strategy**: 0.6% buy threshold, 1.0% sell threshold
-- **Configurable Take Profit**: 0.5% - 10% customizable levels
-- **Smart Position Management**: 30-minute minimum hold, emergency exits
-- **Multi-Asset Support**: Optimized for XRPPHP, SOLPHP, BTCPHP
-- **Daily Safety Limits**: Maximum 10 trades per day
+### **🎯 NEW in v3.3: Dynamic Position Sizing**
+Choose from 4 intelligent position sizing strategies:
+
+#### **1. Fixed Sizing** 🔒
+- **Use case**: Consistent, predictable trades
+- **How it works**: Same amount every trade (you choose ₱100-₱500)
+- **Best for**: Beginners, conservative traders
+- **Example**: Always trade ₱200, regardless of market conditions
+
+#### **2. Percentage Sizing** 📊
+- **Use case**: Grow with your account balance
+- **How it works**: 10% of available PHP balance per trade
+- **Best for**: Long-term growth, scaling accounts
+- **Example**: ₱10,000 balance → ₱1,000 trades
+
+#### **3. Momentum Sizing** ⚡
+- **Use case**: Larger positions on stronger signals
+- **How it works**: Position size increases with momentum strength
+- **Best for**: Active traders, signal-focused approach
+- **Example**: Strong momentum = 140% of base, weak = 80%
+
+#### **4. Adaptive Sizing** 🧠 ⭐ **RECOMMENDED**
+- **Use case**: Most sophisticated risk management
+- **How it works**: Considers balance, momentum, trend, and daily trades
+- **Best for**: Experienced traders, optimal risk/reward
+- **Example**: Reduces size after many trades, increases on strong setups
+
+### **🎮 Interactive Setup Wizard**
+TITAN v3.3 features an intelligent configuration system:
+
+1. **Asset Selection** with backtesting recommendations:
+   - **XRPPHP**: Recommended (+1.5% backtested return with 5.0% TP)
+   - **SOLPHP**: High volatility (-1.3% backtested return with 1.8% TP)
+   - **Custom**: Any PHP trading pair
+
+2. **Position Sizing Strategy** selection with explanations
+
+3. **Take Profit Configuration** with asset-specific suggestions
+
+4. **Risk Analysis** showing daily exposure and recommended balance
 
 ### **📊 Optimized Parameters**
 ```python
 # Backtested and optimized settings
 Buy Threshold: 0.6% momentum
 Sell Threshold: 1.0% decline  
-Trade Amount: ₱200 per position
 Min Hold Time: 30 minutes
 Max Trades/Day: 10
 Check Interval: 15 minutes
 ```
 
-### **🎯 Asset Recommendations**
-- **XRPPHP**: Recommended (5.0% take profit, +1.5% backtested return at the time of writing)
-- **SOLPHP**: High volatility (1.8% take profit, -1.3% backtested return at the time of writing)
-- **Custom**: Any PHP trading pair
+### **🎯 Asset Recommendations (Backtested)**
+- **XRPPHP**: 5.0% take profit, +1.5% return ✅ **RECOMMENDED**
+- **SOLPHP**: 1.8% take profit, -1.3% return ⚠️ **HIGH VOLATILITY**
+- **Custom**: Start with 2.0% take profit for testing
 
-### **🚀 Starting TITAN**
+### **🚀 Starting TITAN v3.3**
 ```bash
 python titan.py
 ```
-**Interactive Configuration:**
+
+**Enhanced Interactive Setup:**
 1. Choose trading asset (XRPPHP recommended)
-2. Set take profit level (5.0% recommended for XRPPHP)
-3. Confirm and start trading
+2. Select position sizing strategy (Adaptive recommended)
+3. Configure base amount and take profit
+4. Review risk analysis
+5. Confirm and start trading
+
+**Sample Configuration:**
+```
+🎯 Asset: XRPPHP
+📊 Position sizing: Adaptive (₱60-₱400 smart adjustments)
+💰 Base reference: ₱200
+📈 Take profit: 5.0%
+💡 Est. max daily risk: ₱2,400
+💰 Recommended balance: ₱4,800+
+```
 
 ---
 
@@ -246,10 +295,11 @@ Both bots provide comprehensive logging:
 - **Daily trade counters** and limits
 - **Performance metrics** vs buy & hold
 
-### **TITAN Monitoring**
+### **TITAN v3.3 Monitoring**
 - Console output with 15-minute updates
-- Log file: `titan.log`
+- Asset-specific log files: `logs/titan_xrp.log`, `logs/titan_sol.log`
 - Trade alerts with P/L calculations
+- Position sizing analysis and reasoning
 
 ### **ORACLE Monitoring**
 - FastAPI dashboard at `http://localhost:8000`
@@ -261,7 +311,9 @@ Both bots provide comprehensive logging:
 
 ## 🛡️ Risk Management
 
-### **TITAN Risk Features**
+### **TITAN v3.3 Risk Features**
+- **Dynamic Position Sizing**: 4 strategies from conservative to aggressive
+- **Intelligent Risk Analysis**: Pre-trading balance and exposure calculations
 - **Take Profit**: Configurable profit-taking (0.5% - 10%)
 - **Stop Loss**: Momentum-based exit conditions
 - **Emergency Exit**: Strong downtrend protection (-5% trend)
@@ -289,16 +341,22 @@ COINS_SECRET_KEY=your_coins_secret_key
 MARKETRAKER_VERIFICATION_KEY=your_verification_key
 ```
 
-### **TITAN Configuration**
-All parameters optimized and hardcoded for stability:
+### **TITAN v3.3 Configuration**
+All core parameters optimized via interactive setup:
+
 ```python
-# Optimized parameters (tested via backtesting)
+# Core strategy parameters (optimized)
 buy_threshold = 0.006      # 0.6% momentum trigger
 sell_threshold = 0.010     # 1.0% decline trigger  
-base_amount = 200          # ₱200 per trade
 min_hold_hours = 0.5       # 30 minutes minimum hold
 max_trades_per_day = 10    # Daily safety limit
 check_interval = 900       # 15 minutes between checks
+
+# User-configurable via setup wizard:
+symbol                     # XRPPHP, SOLPHP, or custom
+take_profit_pct           # 0.5% - 10.0% (asset-specific suggestions)
+base_amount               # ₱50 - ₱2000 reference amount
+position_sizing           # fixed, percentage, momentum, adaptive
 ```
 
 ### **ORACLE Configuration**
@@ -314,16 +372,18 @@ max_trades_per_day = 15          # Higher limit for AI signals
 
 ## 🆚 Bot Comparison
 
-| Feature | 🤖 TITAN | 🔮 ORACLE |
+| Feature | 🤖 TITAN v3.3 | 🔮 ORACLE |
 |---------|----------|-----------|
 | **Strategy** | Pure Momentum | AI + Momentum |
 | **Signals** | Technical Analysis | MarketRaker AI |
-| **Currency** | PHP Native | USD→PHP Conversion |
+| **Position Sizing** | 4 Dynamic Strategies | AI Risk-Based |
+| **Setup** | Interactive Wizard | Webhook Configuration |
 | **Take Profit** | Configurable (0.5%-10%) | AI-Calculated |
-| **Risk Management** | Rule-Based | AI Risk Scoring |
-| **Monitoring** | Console Logging | FastAPI Dashboard |
+| **Risk Management** | Dynamic + Rule-Based | AI Risk Scoring |
+| **Configuration** | User-Friendly Setup | FastAPI Dashboard |
+| **Monitoring** | Asset-Specific Logs | Real-time Dashboard |
 | **Best For** | Consistent momentum trading | AI-guided precision |
-| **Complexity** | Simple & Reliable | Advanced & Intelligent |
+| **Complexity** | Smart & Configurable | Advanced & Intelligent |
 
 ---
 
@@ -340,7 +400,7 @@ python oracle.py
 ```
 
 **Recommended Usage:**
-- **TITAN**: Continuous momentum trading on XRPPHP
+- **TITAN**: Continuous momentum trading with adaptive position sizing
 - **ORACLE**: AI signal trading on multiple pairs
 - **Both**: Diversified strategy with different approaches
 
@@ -369,6 +429,7 @@ python oracle.py
 - **Technical Risk**: Software bugs, API failures, connectivity issues
 - **Strategy Risk**: Algorithms may perform poorly in changing conditions
 - **AI Risk**: AI signals may be incorrect or misleading
+- **Position Sizing Risk**: Dynamic sizing may increase exposure
 
 **⚠️ TRADE RESPONSIBLY - NEVER RISK MORE THAN YOU CAN AFFORD TO LOSE ⚠️**
 
@@ -377,7 +438,7 @@ python oracle.py
 ## 🤝 Contributing
 
 Contributions welcome! Areas for improvement:
-- Additional technical indicators for TITAN
+- Additional position sizing strategies for TITAN
 - Enhanced AI signal processing for ORACLE
 - Multi-timeframe analysis
 - Portfolio management features
@@ -407,8 +468,9 @@ This project is open source. Use responsibly and at your own risk.
 - [ ] ✅ **Configure API Keys** (Coins.ph credentials)
 - [ ] ✅ **Validate Connection** (`python test_connection.py`)
 - [ ] ✅ **Choose Your Bot** (TITAN for momentum, ORACLE for AI)
-- [ ] ✅ **Start Small** (₱200 base amount recommended)
-- [ ] ✅ **Monitor Performance** (check logs and dashboard)
-- [ ] ✅ **Optimize Strategy** (use backtesting tools)
+- [ ] ✅ **Configure TITAN** (Interactive wizard for position sizing)
+- [ ] ✅ **Start Small** (Use recommended settings first)
+- [ ] ✅ **Monitor Performance** (Check asset-specific logs)
+- [ ] ✅ **Optimize Strategy** (Use backtesting tools)
 
 **Happy Trading with TITAN and ORACLE! 🤖🔮📈**
