@@ -233,6 +233,5 @@ if __name__ == "__main__":
     if success:
         test_trading_permissions()
         print(f"\n🚀 YOUR BOT IS READY TO TRADE {os.getenv('TRADING_SYMBOL', 'BTCPHP')}!")
-        print("Run: py simple_bot.py")
     else:
         print("\n❌ Please fix the API connection issues before proceeding.")
