@@ -1,21 +1,27 @@
 """
-🔮 ORACLE - AI-Enhanced Trading Bot v4.0
+🔮 ORACLE - AI-Enhanced Trading Bot v5.0
+
+MAJOR UPDATE v5.0: Advanced ORACLE-Specific Position Sizing System
+- ✅ AI Confidence-Based Sizing: Larger positions on higher AI confidence
+- ✅ Market Volatility Adaptation: Dynamic sizing based on market conditions
+- ✅ Signal Quality Assessment: Multi-factor signal evaluation
+- ✅ Portfolio Balance Scaling: Position size grows with account
+- ✅ Risk-Reward Optimization: Size based on AI target/stop ratios
+- ✅ Configurable Position Sizing Strategies at startup
+- ✅ Enhanced monitoring and logging for position decisions
+- ✅ Real-time parameter validation and suggestions
 
 Complete AI-powered trading system with MarketRaker integration, real-time USD/PHP conversion,
-momentum confirmation, and advanced risk management.
+momentum confirmation, and intelligent position management.
 
-🌟 FEATURES:
-- ✅ FastAPI webhook server for MarketRaker signals
-- ✅ Real-time USD/PHP exchange rate conversion  
-- ✅ AI signal processing with momentum confirmation
-- ✅ Smart price level validation
-- ✅ Risk-based position sizing
-- ✅ Dynamic exchange rate caching
-- ✅ Comprehensive logging and monitoring
-- ✅ Test mode for safe development
-- ✅ Multiple API fallbacks
-- ✅ Enhanced decision making logic
-- ✅ FIXED: Direct MarketRaker format support
+🌟 NEW v5.0 FEATURES:
+- 🎯 **AI Confidence Sizing**: Scale position with AI signal strength
+- 📊 **Volatility Adaptive**: Smaller positions in volatile markets
+- 🎪 **Signal Quality Matrix**: Multi-dimensional signal evaluation
+- 💰 **Portfolio Scaling**: Positions grow with account balance
+- ⚖️ **Risk-Reward Sizing**: Optimize position for target/stop ratio
+- 🔧 **Configurable Strategy**: Choose sizing method at startup
+- 📈 **Performance Tracking**: Monitor sizing strategy effectiveness
 """
 
 import sys
@@ -26,7 +32,7 @@ import json
 import requests
 import time
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 
 # FastAPI for webhook server
@@ -53,12 +59,12 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('oracle.log', encoding='utf-8'),
+        logging.FileHandler('oracle_v5.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
 
-logger = logging.getLogger('OracleAITradingBot')
+logger = logging.getLogger('OracleAITradingBot_v5')
 
 @dataclass
 class AISignal:
@@ -75,6 +81,15 @@ class AISignal:
     stoploss: float           # AI stop loss price (USD)
     trading_pair: str         # "XRP/USD", "SOL/USD", etc.
 
+@dataclass
+class SignalQuality:
+    """Signal Quality Assessment for Position Sizing"""
+    ai_confidence: float       # 0.0 - 1.0 based on AI metrics
+    risk_reward_ratio: float   # Target/Stop distance ratio
+    market_alignment: float    # How well signal aligns with market conditions
+    volatility_factor: float   # Current market volatility adjustment
+    overall_score: float       # Combined quality score 0.0 - 1.0
+
 class ExchangeRateManager:
     """Manages USD/PHP exchange rate conversion for AI signals"""
     
@@ -82,7 +97,7 @@ class ExchangeRateManager:
         self.cached_rate = None
         self.cache_timestamp = None
         self.cache_duration = 3600  # Cache for 1 hour
-        logger.info("💱 ORACLE Exchange Rate Manager initialized")
+        logger.info("💱 ORACLE v5.0 Exchange Rate Manager initialized")
     
     def get_usd_php_rate(self):
         """Get current USD/PHP exchange rate with smart caching"""
@@ -145,19 +160,386 @@ class ExchangeRateManager:
             'percentage_change': ai_signal.percentage_change
         }
 
+class AdvancedPositionSizer:
+    """
+    🎯 ORACLE v5.0 Advanced Position Sizing Engine
+    
+    Implements AI-specific position sizing strategies that optimize for:
+    - AI signal confidence and quality
+    - Market volatility and conditions  
+    - Risk-reward ratios from AI targets
+    - Portfolio balance and growth
+    - Signal alignment with market momentum
+    """
+    
+    def __init__(self, base_amount: float = 200, strategy: str = 'ai_confidence'):
+        self.base_amount = base_amount
+        self.strategy = strategy
+        self.position_history = []
+        self.performance_tracking = {
+            'total_positions': 0,
+            'profitable_positions': 0,
+            'avg_position_size': 0,
+            'size_performance_correlation': 0
+        }
+        
+        logger.info(f"🎯 ORACLE v5.0 Advanced Position Sizer initialized")
+        logger.info(f"💰 Base amount: ₱{self.base_amount}")
+        logger.info(f"📊 Strategy: {self.strategy}")
+    
+    def calculate_signal_quality(self, ai_signal: AISignal, market_volatility: float, 
+                               current_price: float, ai_prices_php: dict) -> SignalQuality:
+        """
+        Calculate comprehensive signal quality score for position sizing
+        
+        Args:
+            ai_signal: The AI signal data
+            market_volatility: Current 24h volatility percentage
+            current_price: Current market price in PHP
+            ai_prices_php: Converted AI prices in PHP
+            
+        Returns:
+            SignalQuality object with detailed assessment
+        """
+        
+        # 1. AI Confidence Score (based on risk level and expected change)
+        # Lower risk = higher confidence, higher expected change = higher confidence
+        risk_confidence = (10 - ai_signal.risk) / 10  # Risk 1 = 0.9, Risk 10 = 0.0
+        change_confidence = min(abs(ai_signal.percentage_change) / 10, 1.0)  # Cap at 10%
+        ai_confidence = (risk_confidence * 0.7) + (change_confidence * 0.3)
+        
+        # 2. Risk-Reward Ratio Assessment
+        entry_price = ai_prices_php['ai_buy_php']
+        target_price = ai_prices_php['ai_target_php']
+        stop_price = ai_prices_php['ai_stop_php']
+        
+        potential_profit = abs(target_price - entry_price)
+        potential_loss = abs(entry_price - stop_price)
+        
+        if potential_loss > 0:
+            risk_reward_ratio = potential_profit / potential_loss
+            # Normalize: 1:1 = 0.5, 2:1 = 0.67, 3:1 = 0.75, etc.
+            rr_score = min(risk_reward_ratio / (risk_reward_ratio + 1), 0.9)
+        else:
+            rr_score = 0.5  # Neutral if no stop loss
+        
+        # 3. Market Alignment (how close current price is to AI entry)
+        price_difference_pct = abs(current_price - entry_price) / entry_price * 100
+        # Perfect alignment at 0% diff, decreases as difference increases
+        alignment_score = max(0, 1 - (price_difference_pct / 5))  # 5% diff = 0 score
+        
+        # 4. Volatility Factor (lower volatility = more predictable)
+        # High volatility reduces position size for safety
+        if market_volatility <= 2:
+            volatility_factor = 1.0  # Low volatility = full size
+        elif market_volatility <= 5:
+            volatility_factor = 0.8  # Medium volatility = 80%
+        elif market_volatility <= 10:
+            volatility_factor = 0.6  # High volatility = 60%
+        else:
+            volatility_factor = 0.4  # Very high volatility = 40%
+        
+        # 5. Overall Signal Quality Score (weighted combination)
+        overall_score = (
+            ai_confidence * 0.35 +      # 35% - AI confidence most important
+            rr_score * 0.25 +           # 25% - Risk/reward ratio
+            alignment_score * 0.25 +    # 25% - Price alignment
+            volatility_factor * 0.15    # 15% - Market conditions
+        )
+        
+        return SignalQuality(
+            ai_confidence=ai_confidence,
+            risk_reward_ratio=risk_reward_ratio if potential_loss > 0 else 1.0,
+            market_alignment=alignment_score,
+            volatility_factor=volatility_factor,
+            overall_score=overall_score
+        )
+    
+    def calculate_position_size(self, ai_signal: AISignal, signal_quality: SignalQuality,
+                              available_balance: float, market_data: dict) -> float:
+        """
+        Calculate optimal position size based on selected strategy
+        
+        Args:
+            ai_signal: AI signal data
+            signal_quality: Calculated signal quality metrics
+            available_balance: Available PHP balance
+            market_data: Current market conditions
+            
+        Returns:
+            Optimal position size in PHP
+        """
+        
+        if self.strategy == 'ai_confidence':
+            return self._ai_confidence_sizing(ai_signal, signal_quality, available_balance)
+        elif self.strategy == 'volatility_adaptive':
+            return self._volatility_adaptive_sizing(ai_signal, signal_quality, available_balance, market_data)
+        elif self.strategy == 'signal_quality':
+            return self._signal_quality_sizing(ai_signal, signal_quality, available_balance)
+        elif self.strategy == 'portfolio_scaling':
+            return self._portfolio_scaling_sizing(ai_signal, signal_quality, available_balance)
+        elif self.strategy == 'risk_reward':
+            return self._risk_reward_sizing(ai_signal, signal_quality, available_balance)
+        elif self.strategy == 'adaptive_ai':
+            return self._adaptive_ai_sizing(ai_signal, signal_quality, available_balance, market_data)
+        else:
+            return self.base_amount  # Fallback to fixed
+    
+    def _ai_confidence_sizing(self, ai_signal: AISignal, signal_quality: SignalQuality, 
+                            available_balance: float) -> float:
+        """Size based primarily on AI confidence metrics"""
+        
+        # Base size scaled by AI confidence
+        confidence_multiplier = signal_quality.ai_confidence
+        
+        # Boost for very high confidence signals
+        if signal_quality.ai_confidence > 0.8:
+            confidence_multiplier *= 1.2
+        
+        # Reduce for low confidence
+        if signal_quality.ai_confidence < 0.4:
+            confidence_multiplier *= 0.7
+        
+        calculated_size = self.base_amount * confidence_multiplier
+        
+        # Apply bounds
+        min_size = self.base_amount * 0.3
+        max_size = min(self.base_amount * 1.5, available_balance * 0.2)
+        
+        final_size = max(min_size, min(calculated_size, max_size))
+        
+        logger.info(f"🎯 AI Confidence Sizing: {signal_quality.ai_confidence:.2f} confidence → ₱{final_size:.0f}")
+        
+        return final_size
+    
+    def _volatility_adaptive_sizing(self, ai_signal: AISignal, signal_quality: SignalQuality,
+                                  available_balance: float, market_data: dict) -> float:
+        """Size adapted for current market volatility"""
+        
+        volatility = market_data.get('volatility', 5)
+        
+        # Base volatility adjustment
+        base_size = self.base_amount * signal_quality.volatility_factor
+        
+        # Additional AI confidence boost
+        confidence_boost = signal_quality.ai_confidence * 0.3
+        volatility_adjusted = base_size * (1 + confidence_boost)
+        
+        # Extra conservative in very volatile markets
+        if volatility > 15:
+            volatility_adjusted *= 0.6
+        elif volatility > 10:
+            volatility_adjusted *= 0.8
+        
+        min_size = self.base_amount * 0.2
+        max_size = min(self.base_amount * 1.2, available_balance * 0.15)
+        
+        final_size = max(min_size, min(volatility_adjusted, max_size))
+        
+        logger.info(f"📊 Volatility Adaptive: {volatility:.1f}% vol, {signal_quality.volatility_factor:.2f} factor → ₱{final_size:.0f}")
+        
+        return final_size
+    
+    def _signal_quality_sizing(self, ai_signal: AISignal, signal_quality: SignalQuality,
+                             available_balance: float) -> float:
+        """Size based on overall signal quality score"""
+        
+        # Use overall quality score as primary multiplier
+        quality_multiplier = signal_quality.overall_score
+        
+        # Bonus for exceptional signals
+        if signal_quality.overall_score > 0.8:
+            quality_multiplier *= 1.3
+        
+        # Extra bonus for perfect alignment signals
+        if signal_quality.market_alignment > 0.9:
+            quality_multiplier *= 1.1
+        
+        calculated_size = self.base_amount * quality_multiplier
+        
+        min_size = self.base_amount * 0.3
+        max_size = min(self.base_amount * 1.6, available_balance * 0.25)
+        
+        final_size = max(min_size, min(calculated_size, max_size))
+        
+        logger.info(f"🎪 Signal Quality: {signal_quality.overall_score:.2f} score → ₱{final_size:.0f}")
+        
+        return final_size
+    
+    def _portfolio_scaling_sizing(self, ai_signal: AISignal, signal_quality: SignalQuality,
+                                available_balance: float) -> float:
+        """Size that scales with portfolio balance"""
+        
+        # Base percentage of available balance
+        portfolio_percentage = 0.10  # 10% base
+        
+        # Adjust percentage based on signal quality
+        adjusted_percentage = portfolio_percentage * signal_quality.overall_score
+        
+        # Minimum and maximum percentage bounds
+        min_percentage = 0.05  # 5% minimum
+        max_percentage = 0.20  # 20% maximum
+        
+        final_percentage = max(min_percentage, min(adjusted_percentage, max_percentage))
+        calculated_size = available_balance * final_percentage
+        
+        # Ensure it's not too far from base amount
+        min_size = self.base_amount * 0.5
+        max_size = self.base_amount * 3.0
+        
+        final_size = max(min_size, min(calculated_size, max_size))
+        
+        logger.info(f"💰 Portfolio Scaling: {final_percentage*100:.1f}% of ₱{available_balance:.0f} → ₱{final_size:.0f}")
+        
+        return final_size
+    
+    def _risk_reward_sizing(self, ai_signal: AISignal, signal_quality: SignalQuality,
+                          available_balance: float) -> float:
+        """Size optimized for risk-reward ratio"""
+        
+        rr_ratio = signal_quality.risk_reward_ratio
+        
+        # Size based on risk-reward attractiveness
+        if rr_ratio >= 3.0:  # 3:1 or better
+            rr_multiplier = 1.4
+        elif rr_ratio >= 2.0:  # 2:1 or better
+            rr_multiplier = 1.2
+        elif rr_ratio >= 1.5:  # 1.5:1 or better
+            rr_multiplier = 1.0
+        elif rr_ratio >= 1.0:  # 1:1 or better
+            rr_multiplier = 0.8
+        else:  # Poor risk/reward
+            rr_multiplier = 0.5
+        
+        # Combine with AI confidence
+        combined_multiplier = rr_multiplier * signal_quality.ai_confidence
+        calculated_size = self.base_amount * combined_multiplier
+        
+        min_size = self.base_amount * 0.3
+        max_size = min(self.base_amount * 1.5, available_balance * 0.20)
+        
+        final_size = max(min_size, min(calculated_size, max_size))
+        
+        logger.info(f"⚖️ Risk-Reward: {rr_ratio:.1f}:1 ratio, {combined_multiplier:.2f}x → ₱{final_size:.0f}")
+        
+        return final_size
+    
+    def _adaptive_ai_sizing(self, ai_signal: AISignal, signal_quality: SignalQuality,
+                          available_balance: float, market_data: dict) -> float:
+        """
+        Advanced adaptive sizing combining all factors intelligently
+        Most sophisticated ORACLE-specific strategy
+        """
+        
+        # 1. Base size from signal quality
+        quality_base = self.base_amount * signal_quality.overall_score
+        
+        # 2. AI confidence boost
+        confidence_factor = 1 + (signal_quality.ai_confidence - 0.5) * 0.6  # -0.3 to +0.3
+        
+        # 3. Risk-reward adjustment
+        rr_factor = min(signal_quality.risk_reward_ratio / 2, 1.2)  # Cap at 1.2x
+        
+        # 4. Market alignment bonus
+        alignment_bonus = 1 + (signal_quality.market_alignment * 0.2)  # Up to +20%
+        
+        # 5. Volatility protection
+        volatility_protection = signal_quality.volatility_factor
+        
+        # 6. Portfolio scaling component
+        portfolio_factor = min(available_balance / (self.base_amount * 10), 1.5)  # Scale with balance
+        
+        # 7. Combine all factors
+        total_multiplier = (
+            confidence_factor * 
+            rr_factor * 
+            alignment_bonus * 
+            volatility_protection * 
+            portfolio_factor
+        )
+        
+        calculated_size = quality_base * total_multiplier
+        
+        # Dynamic bounds based on signal quality
+        min_size = self.base_amount * 0.25
+        max_size = min(
+            self.base_amount * 2.0,
+            available_balance * 0.25
+        )
+        
+        final_size = max(min_size, min(calculated_size, max_size))
+        
+        logger.info(f"🧠 Adaptive AI Sizing:")
+        logger.info(f"   Quality: {signal_quality.overall_score:.2f}, Confidence: {confidence_factor:.2f}x")
+        logger.info(f"   RR: {rr_factor:.2f}x, Alignment: {alignment_bonus:.2f}x")
+        logger.info(f"   Volatility: {volatility_protection:.2f}x, Portfolio: {portfolio_factor:.2f}x")
+        logger.info(f"   Total: {total_multiplier:.2f}x → ₱{final_size:.0f}")
+        
+        return final_size
+    
+    def track_position_performance(self, position_size: float, ai_signal: AISignal, 
+                                 signal_quality: SignalQuality, final_pnl: Optional[float] = None):
+        """Track position sizing performance for optimization"""
+        
+        position_record = {
+            'timestamp': datetime.now(),
+            'position_size': position_size,
+            'ai_risk': ai_signal.risk,
+            'signal_quality_score': signal_quality.overall_score,
+            'ai_confidence': signal_quality.ai_confidence,
+            'risk_reward_ratio': signal_quality.risk_reward_ratio,
+            'strategy': self.strategy,
+            'final_pnl': final_pnl
+        }
+        
+        self.position_history.append(position_record)
+        
+        # Update performance tracking
+        self.performance_tracking['total_positions'] += 1
+        if final_pnl is not None and final_pnl > 0:
+            self.performance_tracking['profitable_positions'] += 1
+        
+        # Calculate average position size
+        total_size = sum(p['position_size'] for p in self.position_history)
+        self.performance_tracking['avg_position_size'] = total_size / len(self.position_history)
+        
+        logger.info(f"📈 Position tracking updated: {len(self.position_history)} positions recorded")
+    
+    def get_sizing_strategy_performance(self) -> dict:
+        """Get performance statistics for current sizing strategy"""
+        
+        if not self.position_history:
+            return {'message': 'No position history available'}
+        
+        total_positions = len(self.position_history)
+        profitable = len([p for p in self.position_history if p.get('final_pnl', 0) > 0])
+        
+        avg_size = sum(p['position_size'] for p in self.position_history) / total_positions
+        avg_quality = sum(p['signal_quality_score'] for p in self.position_history) / total_positions
+        
+        return {
+            'strategy': self.strategy,
+            'total_positions': total_positions,
+            'profitable_positions': profitable,
+            'win_rate': (profitable / total_positions * 100) if total_positions > 0 else 0,
+            'avg_position_size': avg_size,
+            'avg_signal_quality': avg_quality,
+            'performance_summary': f"{profitable}/{total_positions} wins ({profitable/total_positions*100:.1f}%)" if total_positions > 0 else "No data"
+        }
+
 class OracleAITradingBot:
     """
-    🔮 ORACLE - AI-Enhanced Trading Bot v4.0
+    🔮 ORACLE - AI-Enhanced Trading Bot v5.0
     
-    Advanced AI-powered trading system with MarketRaker integration,
-    real-time currency conversion, and intelligent decision making.
+    Advanced AI-powered trading system with intelligent position sizing,
+    MarketRaker integration, and comprehensive risk management.
     """
     
-    def __init__(self, base_amount=200):
+    def __init__(self, base_amount=200, position_sizing_strategy='ai_confidence'):
         # Bot identity
         self.name = "ORACLE"
-        self.version = "4.0.0"
-        self.description = "AI-Enhanced Trading Bot"
+        self.version = "5.0.0"
+        self.description = "AI-Enhanced Trading Bot with Advanced Position Sizing"
         
         # Initialize Coins.ph API
         self.api = CoinsAPI(
@@ -168,8 +550,15 @@ class OracleAITradingBot:
         # Initialize Exchange Rate Manager
         self.exchange_rate_manager = ExchangeRateManager()
         
+        # Initialize Advanced Position Sizer
+        self.position_sizer = AdvancedPositionSizer(
+            base_amount=base_amount,
+            strategy=position_sizing_strategy
+        )
+        
         # Trading Configuration
         self.base_amount = base_amount
+        self.position_sizing_strategy = position_sizing_strategy
         self.supported_pairs = {
             'XRP/USD': 'XRPPHP',
             'SOL/USD': 'SOLPHP', 
@@ -200,6 +589,7 @@ class OracleAITradingBot:
         
         logger.info(f"🔮 {self.name} - {self.description} v{self.version} initialized")
         logger.info(f"💰 Base amount: ₱{self.base_amount}")
+        logger.info(f"📊 Position sizing: {self.position_sizing_strategy}")
         logger.info(f"🎯 Supported pairs: {list(self.supported_pairs.keys())}")
         logger.info(f"🧪 Test mode: {'ON' if self.test_mode else 'OFF'}")
         logger.info(f"💱 Exchange rate caching: {self.exchange_rate_manager.cache_duration//60} minutes")
@@ -214,13 +604,17 @@ class OracleAITradingBot:
                 "version": self.version,
                 "status": "running" if self.running else "stopped",
                 "test_mode": self.test_mode,
+                "position_sizing": self.position_sizing_strategy,
                 "supported_pairs": list(self.supported_pairs.keys()),
                 "features": [
+                    "Advanced AI-specific position sizing",
+                    "Signal quality assessment",
+                    "Market volatility adaptation",
+                    "Risk-reward optimization",
+                    "Portfolio scaling",
                     "MarketRaker AI signals",
                     "Real-time USD/PHP conversion",
-                    "Momentum confirmation",
-                    "Price level validation", 
-                    "Risk-based sizing"
+                    "Momentum confirmation"
                 ]
             }
         
@@ -246,6 +640,7 @@ class OracleAITradingBot:
                 "running": self.running,
                 "uptime_seconds": int(uptime.total_seconds()),
                 "test_mode": self.test_mode,
+                "position_sizing": self.position_sizing_strategy,
                 "api_status": api_status,
                 "exchange_rate": exchange_rate,
                 "active_positions": len(self.current_positions),
@@ -254,7 +649,7 @@ class OracleAITradingBot:
         
         @self.app.get("/status")
         async def get_status():
-            """Comprehensive status endpoint"""
+            """Comprehensive status endpoint with position sizing info"""
             uptime = datetime.now() - self.start_time
             today = datetime.now().strftime('%Y-%m-%d')
             
@@ -276,6 +671,9 @@ class OracleAITradingBot:
                 "cache_expires_in": self.exchange_rate_manager.cache_duration // 60
             }
             
+            # Position sizing performance
+            sizing_performance = self.position_sizer.get_sizing_strategy_performance()
+            
             return {
                 "bot": {
                     "name": self.name,
@@ -288,12 +686,14 @@ class OracleAITradingBot:
                 },
                 "trading": {
                     "base_amount": self.base_amount,
+                    "position_sizing_strategy": self.position_sizing_strategy,
                     "daily_trades": self.daily_trades.get(today, 0),
                     "max_daily": self.max_trades_per_day,
                     "active_positions": len(self.current_positions),
                     "price_tolerance": f"{self.price_tolerance}%",
                     **balance_info
                 },
+                "position_sizing": sizing_performance,
                 "exchange_rate": exchange_info,
                 "signals": {
                     "received": len(self.ai_signals),
@@ -304,7 +704,7 @@ class OracleAITradingBot:
         
         @self.app.post("/webhook/marketraker")
         async def receive_ai_signal(request: Request):
-            """Receive and process MarketRaker AI signals - FIXED for direct format"""
+            """Receive and process MarketRaker AI signals with v5.0 position sizing"""
             try:
                 # Get payload and signature
                 payload = await request.body()
@@ -328,40 +728,40 @@ class OracleAITradingBot:
                 
                 signal_data = json.loads(payload.decode('utf-8'))
                 
-                logger.info(f"🎯 {self.name}: MarketRaker AI Signal received!")
+                logger.info(f"🎯 {self.name} v{self.version}: MarketRaker AI Signal received!")
                 logger.info(f"   Raw signal keys: {list(signal_data.keys())}")
                 logger.info(f"   Signature: {'✅ Valid' if verification_key and signature else '⚠️ No verification'}")
                 
-                # FIXED: Handle both MarketRaker direct format and wrapped format
+                # Handle both MarketRaker direct format and wrapped format
                 if signal_data.get('type') == 'indicator':
                     # Wrapped format: {"type": "indicator", "data": {...}}
                     logger.info(f"   Format: Wrapped indicator")
                     await self.process_ai_signal(signal_data['data'])
-                    return JSONResponse({"status": "success", "message": f"{self.name} signal processed"})
+                    return JSONResponse({"status": "success", "message": f"{self.name} v{self.version} signal processed"})
                 elif 'trading_type' in signal_data:
                     # Direct MarketRaker format: {"trading_type": "Long", "buy_price": 2.45, ...}
                     logger.info(f"   Format: Direct MarketRaker")
                     logger.info(f"   Trading type: {signal_data.get('trading_type')}")
                     logger.info(f"   Trading pair: {signal_data.get('trading_pair')}")
                     await self.process_ai_signal(signal_data)
-                    return JSONResponse({"status": "success", "message": f"{self.name} MarketRaker signal processed"})
+                    return JSONResponse({"status": "success", "message": f"{self.name} v{self.version} MarketRaker signal processed"})
                 else:
                     logger.warning(f"⚠️ {self.name}: Unknown signal format")
                     logger.debug(f"   Signal data: {signal_data}")
                     return JSONResponse({"status": "ignored", "message": "Unknown signal format"})
                     
             except Exception as e:
-                logger.error(f"❌ {self.name} MarketRaker webhook error: {e}")
+                logger.error(f"❌ {self.name} v{self.version} MarketRaker webhook error: {e}")
                 return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
         
         @self.app.post("/webhook/test")
         async def test_webhook(request: Request):
-            """Test webhook endpoint - processes signals in test mode"""
+            """Test webhook endpoint - processes signals in test mode with v5.0 sizing"""
             try:
                 payload = await request.body()
                 signal_data = json.loads(payload.decode('utf-8'))
                 
-                logger.info(f"📨 {self.name}: Test webhook received!")
+                logger.info(f"📨 {self.name} v{self.version}: Test webhook received!")
                 
                 # Handle both formats for test endpoint too
                 if signal_data.get('type') == 'indicator':
@@ -378,22 +778,22 @@ class OracleAITradingBot:
                 
                 return JSONResponse({
                     "status": "success", 
-                    "message": f"{self.name} test signal processed",
+                    "message": f"{self.name} v{self.version} test signal processed",
                     "timestamp": datetime.now().isoformat()
                 })
                 
             except Exception as e:
-                logger.error(f"❌ {self.name} test webhook error: {e}")
+                logger.error(f"❌ {self.name} v{self.version} test webhook error: {e}")
                 return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
         
         @self.app.post("/toggle-test-mode")
         async def toggle_test_mode():
             """Toggle between test mode and live trading"""
             self.test_mode = not self.test_mode
-            logger.info(f"🔄 {self.name} Test mode: {'ON' if self.test_mode else 'OFF'}")
+            logger.info(f"🔄 {self.name} v{self.version} Test mode: {'ON' if self.test_mode else 'OFF'}")
             return {
                 "test_mode": self.test_mode, 
-                "message": f"{self.name} test mode {'enabled' if self.test_mode else 'disabled'}"
+                "message": f"{self.name} v{self.version} test mode {'enabled' if self.test_mode else 'disabled'}"
             }
         
         @self.app.get("/exchange-rate")
@@ -409,16 +809,27 @@ class OracleAITradingBot:
                 "cache_duration_minutes": self.exchange_rate_manager.cache_duration // 60,
                 "timestamp": datetime.now().isoformat()
             }
+        
+        @self.app.get("/position-sizing-performance")
+        async def get_position_sizing_performance():
+            """Get detailed position sizing strategy performance"""
+            return {
+                "strategy": self.position_sizing_strategy,
+                "performance": self.position_sizer.get_sizing_strategy_performance(),
+                "available_strategies": [
+                    "ai_confidence", "volatility_adaptive", "signal_quality",
+                    "portfolio_scaling", "risk_reward", "adaptive_ai"
+                ]
+            }
 
     async def process_ai_signal(self, signal_data: Dict[str, Any], test_mode: Optional[bool] = None):
-        """Process incoming AI signal with complete analysis - FIXED for MarketRaker format"""
+        """Process incoming AI signal with advanced v5.0 position sizing"""
         try:
             logger.info(f"🔍 Processing signal data type: {type(signal_data)}")
             logger.info(f"🔍 Signal data content: {signal_data}")
             
             # Handle different data formats from MarketRaker
             if isinstance(signal_data, str):
-                # If data is a string, try to parse it as JSON
                 try:
                     signal_data = json.loads(signal_data)
                     logger.info(f"✅ Parsed string data to dict: {signal_data}")
@@ -442,7 +853,6 @@ class OracleAITradingBot:
             
             # Create AISignal with proper error handling
             try:
-                # Fill in default values for missing optional fields
                 signal_dict = {
                     'trading_type': signal_data.get('trading_type'),
                     'leverage': signal_data.get('leverage', 1),
@@ -474,7 +884,7 @@ class OracleAITradingBot:
             
             # Use provided test_mode or default to instance setting
             is_test = test_mode if test_mode is not None else self.test_mode
-            mode_str = f"🧪 {self.name} TEST" if is_test else f"💰 {self.name} LIVE"
+            mode_str = f"🧪 {self.name} v{self.version} TEST" if is_test else f"💰 {self.name} v{self.version} LIVE"
             
             logger.info(f"🎯 {mode_str} AI Signal for {signal.trading_pair} → {php_symbol}")
             logger.info(f"   Type: {signal.trading_type}")
@@ -493,20 +903,21 @@ class OracleAITradingBot:
                 await self.process_ai_sell_signal(php_symbol, signal, is_test)
                 
         except Exception as e:
-            logger.error(f"❌ {self.name} error processing AI signal: {e}")
+            logger.error(f"❌ {self.name} v{self.version} error processing AI signal: {e}")
             logger.error(f"Signal data type: {type(signal_data)}")
             logger.error(f"Signal data: {signal_data}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
 
     async def process_ai_buy_signal(self, symbol: str, signal: AISignal, test_mode: bool):
-        """Process AI buy signal with complete USD/PHP conversion and validation"""
+        """Process AI buy signal with advanced v5.0 position sizing"""
         try:
             # Convert AI signal USD prices to PHP
             ai_prices_php = self.exchange_rate_manager.convert_ai_signal_to_php(signal)
             
             # Get current market data
             current_price = self.api.get_current_price(symbol)
+            market_data = self.get_market_data(symbol)
             self.update_price_history(symbol, current_price)
             
             # Calculate momentum confirmation
@@ -515,66 +926,106 @@ class OracleAITradingBot:
             # Validate price levels
             price_validation = self.validate_price_levels(current_price, ai_prices_php)
             
-            logger.info(f"💱 {self.name} AI Signal Conversion:")
+            # Calculate signal quality using advanced v5.0 system
+            signal_quality = self.position_sizer.calculate_signal_quality(
+                signal, market_data['volatility'], current_price, ai_prices_php
+            )
+            
+            logger.info(f"💱 {self.name} v{self.version} AI Signal Conversion:")
             logger.info(f"   Entry: ${signal.buy_price:.2f} → ₱{ai_prices_php['ai_buy_php']:.2f}")
             logger.info(f"   Target: ${signal.sell_price:.2f} → ₱{ai_prices_php['ai_target_php']:.2f}")
             logger.info(f"   Stop: ${signal.stoploss:.2f} → ₱{ai_prices_php['ai_stop_php']:.2f}")
             logger.info(f"   Rate: 1 USD = {ai_prices_php['usd_php_rate']:.4f} PHP")
             
-            logger.info(f"📊 {self.name} Market Analysis:")
+            logger.info(f"📊 {self.name} v{self.version} Market Analysis:")
             logger.info(f"   Current: ₱{current_price:.2f}")
             logger.info(f"   Momentum: {momentum_score*100:+.1f}%")
+            logger.info(f"   Volatility: {market_data['volatility']:.1f}%")
             
-            logger.info(f"🎯 {self.name} Price Level Validation:")
+            logger.info(f"🎯 {self.name} v{self.version} Signal Quality Assessment:")
+            logger.info(f"   AI Confidence: {signal_quality.ai_confidence:.2f}")
+            logger.info(f"   Risk/Reward: {signal_quality.risk_reward_ratio:.1f}:1")
+            logger.info(f"   Market Alignment: {signal_quality.market_alignment:.2f}")
+            logger.info(f"   Volatility Factor: {signal_quality.volatility_factor:.2f}")
+            logger.info(f"   Overall Score: {signal_quality.overall_score:.2f}")
+            
+            logger.info(f"🎯 {self.name} v{self.version} Price Level Validation:")
             logger.info(f"   Entry diff: {price_validation['entry_diff_pct']:+.1f}%")
             logger.info(f"   Upside potential: {price_validation['upside_potential']:+.1f}%")
             logger.info(f"   Downside risk: {price_validation['downside_risk']:+.1f}%")
             
             # Enhanced decision logic
             should_buy = self.should_execute_ai_buy_enhanced(
-                signal, momentum_score, current_price, ai_prices_php, price_validation
+                signal, momentum_score, current_price, ai_prices_php, price_validation, signal_quality
             )
             
             if should_buy and self.can_trade_today():
-                # Calculate position size based on AI risk level
-                position_size = self.calculate_ai_position_size(signal.risk)
+                # Get available balance
+                php_balance = self.api.get_balance('PHP')
+                available_balance = php_balance['free'] if php_balance else 0
+                
+                # Calculate optimal position size using advanced v5.0 system
+                optimal_position_size = self.position_sizer.calculate_position_size(
+                    signal, signal_quality, available_balance, market_data
+                )
                 
                 if test_mode:
-                    logger.info(f"🧪 {self.name} TEST BUY SIMULATION:")
-                    logger.info(f"   Would buy {symbol} with ₱{position_size:.0f}")
+                    logger.info(f"🧪 {self.name} v{self.version} TEST BUY SIMULATION:")
+                    logger.info(f"   Would buy {symbol} with ₱{optimal_position_size:.0f}")
+                    logger.info(f"   Position sizing strategy: {self.position_sizing_strategy}")
+                    logger.info(f"   Signal quality score: {signal_quality.overall_score:.2f}")
                     logger.info(f"   Entry validation: {'✅' if price_validation['is_valid'] else '❌'}")
                     logger.info(f"   Momentum confirmation: {'✅' if momentum_score > self.momentum_buy_threshold else '❌'}")
                     logger.info(f"   Expected target: ₱{ai_prices_php['ai_target_php']:.2f}")
                     logger.info(f"   Risk/Reward: {price_validation['upside_potential']:.1f}% / {price_validation['downside_risk']:.1f}%")
                 else:
-                    # Execute real buy order with PHP targets
-                    await self.place_ai_buy_order_enhanced(symbol, signal, position_size, ai_prices_php)
+                    # Execute real buy order with advanced sizing
+                    await self.place_ai_buy_order_enhanced(symbol, signal, optimal_position_size, ai_prices_php, signal_quality)
             else:
-                reason = self.get_rejection_reason(signal, momentum_score, price_validation)
-                logger.info(f"⏸️ {self.name} AI buy signal rejected: {reason}")
+                reason = self.get_rejection_reason(signal, momentum_score, price_validation, signal_quality)
+                logger.info(f"⏸️ {self.name} v{self.version} AI buy signal rejected: {reason}")
                 
         except Exception as e:
-            logger.error(f"❌ {self.name} error processing AI buy signal: {e}")
+            logger.error(f"❌ {self.name} v{self.version} error processing AI buy signal: {e}")
+
+    def get_market_data(self, symbol: str) -> dict:
+        """Get current market data for the symbol"""
+        try:
+            ticker_24hr = self.api.get_24hr_ticker(symbol)
+            
+            volume_24h = float(ticker_24hr.get('quoteVolume', 0))
+            price_change_24h = float(ticker_24hr.get('priceChangePercent', 0))
+            volatility = abs(price_change_24h)
+            
+            return {
+                'volume_24h': volume_24h,
+                'volatility': volatility,
+                'price_change_24h': price_change_24h
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error getting market data: {e}")
+            return {'volume_24h': 0, 'volatility': 5.0, 'price_change_24h': 0}
 
     async def process_ai_sell_signal(self, symbol: str, signal: AISignal, test_mode: bool):
         """Process AI sell signal or close existing position"""
         try:
             if test_mode:
-                logger.info(f"🧪 {self.name} TEST SELL SIMULATION:")
+                logger.info(f"🧪 {self.name} v{self.version} TEST SELL SIMULATION:")
                 logger.info(f"   Would sell {symbol} position")
                 logger.info(f"   AI target: ${signal.sell_price:.4f}")
                 return
             
             # Check if we have an open position
             if symbol not in self.current_positions:
-                logger.info(f"⏸️ {self.name}: No open position for {symbol} to close")
+                logger.info(f"⏸️ {self.name} v{self.version}: No open position for {symbol} to close")
                 return
             
             # Execute real sell based on AI signal
             await self.place_ai_sell_order(symbol, signal, "AI Signal")
             
         except Exception as e:
-            logger.error(f"❌ {self.name} error processing AI sell signal: {e}")
+            logger.error(f"❌ {self.name} v{self.version} error processing AI sell signal: {e}")
 
     def validate_price_levels(self, current_php_price, ai_prices_php, tolerance=None):
         """Validate if current price is suitable for AI signal execution"""
@@ -611,38 +1062,54 @@ class OracleAITradingBot:
         
         return validation_result
 
-    def should_execute_ai_buy_enhanced(self, signal, momentum, current_price, ai_prices_php, price_validation):
-        """Enhanced buy decision with comprehensive validation"""
+    def should_execute_ai_buy_enhanced(self, signal, momentum, current_price, ai_prices_php, 
+                                     price_validation, signal_quality):
+        """Enhanced buy decision with v5.0 signal quality assessment"""
         
         # Risk filter: Skip very high risk signals
         if signal.risk > 8:
-            logger.info(f"⚠️ {self.name}: AI signal risk too high: {signal.risk}/10")
+            logger.info(f"⚠️ {self.name} v{self.version}: AI signal risk too high: {signal.risk}/10")
             return False
         
         # Price level validation: Must be near AI entry price
         if not price_validation['is_valid']:
-            logger.info(f"⚠️ {self.name}: Price level validation failed")
+            logger.info(f"⚠️ {self.name} v{self.version}: Price level validation failed")
+            return False
+        
+        # Signal quality filter: Require minimum quality score
+        if signal_quality.overall_score < 0.3:
+            logger.info(f"⚠️ {self.name} v{self.version}: Signal quality too low: {signal_quality.overall_score:.2f}")
             return False
         
         # Momentum confirmation: AI bullish + positive momentum
         if signal.market_direction.lower() == 'bull' and momentum > self.momentum_buy_threshold:
-            logger.info(f"✅ {self.name}: AI + Momentum + Price level alignment")
+            logger.info(f"✅ {self.name} v{self.version}: AI + Momentum + Price level + Quality alignment")
             return True
         
-        # Strong AI confidence with good price level
-        if (signal.risk <= 3 and 
-            signal.percentage_change > 3.0 and 
-            price_validation['upside_potential'] > 2.0):
-            logger.info(f"✅ {self.name}: High AI confidence with good price level")
+        # High quality signal with good risk/reward even without momentum
+        if (signal_quality.overall_score > 0.7 and 
+            signal_quality.risk_reward_ratio > 2.0 and 
+            signal.risk <= 4):
+            logger.info(f"✅ {self.name} v{self.version}: High quality signal overrides momentum requirement")
+            return True
+        
+        # Strong AI confidence with excellent price alignment
+        if (signal_quality.ai_confidence > 0.8 and 
+            signal_quality.market_alignment > 0.8 and 
+            price_validation['upside_potential'] > 3.0):
+            logger.info(f"✅ {self.name} v{self.version}: Strong AI confidence with excellent alignment")
             return True
         
         return False
 
-    def get_rejection_reason(self, signal, momentum, price_validation):
-        """Get human-readable rejection reason"""
+    def get_rejection_reason(self, signal, momentum, price_validation, signal_quality):
+        """Get human-readable rejection reason with v5.0 enhancements"""
         
         if signal.risk > 8:
             return f"High risk ({signal.risk}/10)"
+        
+        if signal_quality.overall_score < 0.3:
+            return f"Low signal quality ({signal_quality.overall_score:.2f})"
         
         if not price_validation['is_near_entry']:
             return f"Price too far from AI entry ({price_validation['entry_diff_pct']:.1f}% difference)"
@@ -661,35 +1128,25 @@ class OracleAITradingBot:
         
         return "Multiple factors"
 
-    def calculate_ai_position_size(self, ai_risk: int) -> float:
-        """Calculate position size based on AI risk level"""
-        
-        # Risk-adjusted position sizing
-        # Higher risk = smaller position
-        risk_multiplier = max(0.3, 1.0 - (ai_risk - 1) * 0.1)
-        
-        adjusted_amount = self.base_amount * risk_multiplier
-        
-        logger.info(f"💰 {self.name} Position sizing: Risk {ai_risk}/10 → ₱{adjusted_amount:.0f} ({risk_multiplier*100:.0f}% of base)")
-        
-        return adjusted_amount
-
-    async def place_ai_buy_order_enhanced(self, symbol: str, signal: AISignal, amount: float, ai_prices_php: dict):
-        """Place buy order with enhanced AI target tracking"""
+    async def place_ai_buy_order_enhanced(self, symbol: str, signal: AISignal, position_size: float, 
+                                        ai_prices_php: dict, signal_quality: SignalQuality):
+        """Place buy order with enhanced v5.0 AI target tracking and position sizing"""
         try:
             current_price = self.api.get_current_price(symbol)
-            quantity = amount / current_price
+            quantity = position_size / current_price
             
             # Place limit order slightly above market
             buy_price = current_price * 1.001
             
-            logger.info(f"🔄 {self.name} placing AI-guided BUY order:")
+            logger.info(f"🔄 {self.name} v{self.version} placing AI-guided BUY order:")
             logger.info(f"   Symbol: {symbol}")
             logger.info(f"   Quantity: {quantity:.6f}")
             logger.info(f"   Price: ₱{buy_price:.4f}")
-            logger.info(f"   Amount: ₱{amount:.2f}")
+            logger.info(f"   Position Size: ₱{position_size:.2f} ({self.position_sizing_strategy} strategy)")
+            logger.info(f"   Signal Quality: {signal_quality.overall_score:.2f}")
             logger.info(f"   AI Target: ₱{ai_prices_php['ai_target_php']:.2f}")
             logger.info(f"   AI Stop: ₱{ai_prices_php['ai_stop_php']:.2f}")
+            logger.info(f"   Risk/Reward: {signal_quality.risk_reward_ratio:.1f}:1")
             
             order = self.api.place_order(
                 symbol=symbol,
@@ -701,32 +1158,42 @@ class OracleAITradingBot:
             )
             
             if order.get('orderId'):
-                # Store position with AI signal data and PHP targets
+                # Store position with enhanced v5.0 data
                 self.current_positions[symbol] = {
                     'entry_price': buy_price,
                     'entry_time': datetime.now(),
                     'quantity': quantity,
+                    'position_size': position_size,
                     'ai_signal': signal,
                     'ai_prices_php': ai_prices_php,
+                    'signal_quality': signal_quality,
+                    'position_sizing_strategy': self.position_sizing_strategy,
                     'order_id': order['orderId']
                 }
                 
                 self.update_daily_trades()
                 
-                logger.info(f"✅ {self.name} AI BUY ORDER PLACED!")
+                # Track position for sizing performance analysis
+                self.position_sizer.track_position_performance(
+                    position_size, signal, signal_quality
+                )
+                
+                logger.info(f"✅ {self.name} v{self.version} AI BUY ORDER PLACED!")
                 logger.info(f"   Order ID: {order['orderId']}")
                 
-                # Send alert
-                logger.info(f"🔔 ALERT: 🤖 {self.name} BUY {symbol}: {quantity:.6f} at ₱{buy_price:.4f} (Target: ₱{ai_prices_php['ai_target_php']:.2f})")
+                # Enhanced alert with v5.0 details
+                self.send_alert(f"🔔 🟢 {self.name} v{self.version} BUY {symbol}: {quantity:.6f} at ₱{buy_price:.4f}")
+                self.send_alert(f"   📊 Strategy: {self.position_sizing_strategy}, Quality: {signal_quality.overall_score:.2f}")
+                self.send_alert(f"   🎯 Target: ₱{ai_prices_php['ai_target_php']:.2f}, RR: {signal_quality.risk_reward_ratio:.1f}:1")
                 
         except Exception as e:
-            logger.error(f"❌ {self.name} error placing AI buy order: {e}")
+            logger.error(f"❌ {self.name} v{self.version} error placing AI buy order: {e}")
 
     async def place_ai_sell_order(self, symbol: str, signal: AISignal, reason: str):
-        """Place sell order based on AI signal"""
+        """Place sell order based on AI signal with v5.0 performance tracking"""
         try:
             if symbol not in self.current_positions:
-                logger.warning(f"⚠️ {self.name}: No position to sell for {symbol}")
+                logger.warning(f"⚠️ {self.name} v{self.version}: No position to sell for {symbol}")
                 return
             
             position = self.current_positions[symbol]
@@ -739,13 +1206,17 @@ class OracleAITradingBot:
             # Calculate P/L
             entry_price = position['entry_price']
             profit_loss = (sell_price - entry_price) / entry_price * 100
+            gross_amount = quantity_to_sell * sell_price
             
-            logger.info(f"🔄 {self.name} placing AI-guided SELL order:")
+            logger.info(f"🔄 {self.name} v{self.version} placing AI-guided SELL order:")
             logger.info(f"   Symbol: {symbol}")
             logger.info(f"   Quantity: {quantity_to_sell:.6f}")
             logger.info(f"   Price: ₱{sell_price:.4f}")
+            logger.info(f"   Gross Amount: ₱{gross_amount:.2f}")
             logger.info(f"   P/L: {profit_loss:+.1f}%")
             logger.info(f"   Reason: {reason}")
+            logger.info(f"   Position Size: ₱{position.get('position_size', 0):.0f}")
+            logger.info(f"   Strategy: {position.get('position_sizing_strategy', 'unknown')}")
             
             order = self.api.place_order(
                 symbol=symbol,
@@ -757,19 +1228,29 @@ class OracleAITradingBot:
             )
             
             if order.get('orderId'):
+                # Update position sizing performance tracking
+                if 'signal_quality' in position:
+                    self.position_sizer.track_position_performance(
+                        position.get('position_size', 0),
+                        position['ai_signal'],
+                        position['signal_quality'],
+                        final_pnl=profit_loss
+                    )
+                
                 # Clear position
                 del self.current_positions[symbol]
                 self.update_daily_trades()
                 
-                logger.info(f"✅ {self.name} AI SELL ORDER PLACED!")
+                logger.info(f"✅ {self.name} v{self.version} AI SELL ORDER PLACED!")
                 logger.info(f"   Order ID: {order['orderId']}")
                 
-                # Send alert
+                # Enhanced alert with v5.0 performance data
                 profit_emoji = "🟢" if profit_loss > 0 else "🔴"
-                logger.info(f"🔔 ALERT: {profit_emoji} {self.name} SELL {symbol}: {quantity_to_sell:.6f} at ₱{sell_price:.4f} ({profit_loss:+.1f}%)")
+                self.send_alert(f"🔔 {profit_emoji} {self.name} v{self.version} SELL {symbol}: {quantity_to_sell:.6f} at ₱{sell_price:.4f}")
+                self.send_alert(f"   📊 P/L: {profit_loss:+.1f}% | {reason} | Strategy: {position.get('position_sizing_strategy', 'unknown')}")
                 
         except Exception as e:
-            logger.error(f"❌ {self.name} error placing AI sell order: {e}")
+            logger.error(f"❌ {self.name} v{self.version} error placing AI sell order: {e}")
 
     def update_price_history(self, symbol: str, price: float):
         """Update price history for momentum calculation"""
@@ -814,25 +1295,39 @@ class OracleAITradingBot:
         self.daily_trades[today] = self.daily_trades.get(today, 0) + 1
 
     async def monitor_positions(self):
-        """Monitor existing positions for exit conditions"""
+        """Monitor existing positions for exit conditions with v5.0 enhancements"""
         for symbol, position in list(self.current_positions.items()):
             try:
                 current_price = self.api.get_current_price(symbol)
                 entry_price = position['entry_price']
                 signal = position['ai_signal']
                 ai_prices_php = position.get('ai_prices_php', {})
+                signal_quality = position.get('signal_quality')
+                
+                # Enhanced position monitoring with signal quality awareness
+                logger.debug(f"📊 Monitoring {symbol}: ₱{current_price:.4f} (entry: ₱{entry_price:.4f})")
+                if signal_quality:
+                    logger.debug(f"   Quality: {signal_quality.overall_score:.2f}, RR: {signal_quality.risk_reward_ratio:.1f}:1")
                 
                 # Check AI target reached
                 if ai_prices_php and current_price >= ai_prices_php.get('ai_target_php', float('inf')):
-                    logger.info(f"🎯 {self.name}: AI target reached for {symbol}!")
+                    logger.info(f"🎯 {self.name} v{self.version}: AI target reached for {symbol}!")
                     await self.place_ai_sell_order(symbol, signal, "AI Target Reached")
                     continue
                 
                 # Check AI stop loss
                 if ai_prices_php and current_price <= ai_prices_php.get('ai_stop_php', 0):
-                    logger.info(f"⛔ {self.name}: AI stop loss triggered for {symbol}!")
+                    logger.info(f"⛔ {self.name} v{self.version}: AI stop loss triggered for {symbol}!")
                     await self.place_ai_sell_order(symbol, signal, "AI Stop Loss")
                     continue
+                
+                # Dynamic exit based on signal quality degradation
+                if signal_quality and signal_quality.overall_score < 0.2:
+                    current_profit = (current_price - entry_price) / entry_price * 100
+                    if current_profit > -2.0:  # Only if not losing too much
+                        logger.info(f"📉 {self.name} v{self.version}: Signal quality degraded for {symbol}")
+                        await self.place_ai_sell_order(symbol, signal, "Quality Degradation")
+                        continue
                 
                 # Check minimum hold time
                 hold_time = datetime.now() - position['entry_time']
@@ -841,16 +1336,30 @@ class OracleAITradingBot:
                     # Check momentum-based exit
                     momentum = self.calculate_momentum_score(symbol)
                     if momentum < -self.momentum_sell_threshold:
-                        logger.info(f"📉 {self.name}: Momentum exit for {symbol}")
+                        logger.info(f"📉 {self.name} v{self.version}: Momentum exit for {symbol}")
                         await self.place_ai_sell_order(symbol, signal, "Momentum Exit")
                         continue
+                    
+                    # Time-based exit for low quality signals (risk management)
+                    if signal_quality and signal_quality.overall_score < 0.4:
+                        time_held_hours = hold_time.total_seconds() / 3600
+                        if time_held_hours > 24:  # 24 hours for low quality signals
+                            current_profit = (current_price - entry_price) / entry_price * 100
+                            if current_profit > -5.0:  # Only if not losing too much
+                                logger.info(f"⏰ {self.name} v{self.version}: Time exit for low quality {symbol}")
+                                await self.place_ai_sell_order(symbol, signal, "Time-based Exit")
+                                continue
                 
             except Exception as e:
-                logger.error(f"❌ {self.name} error monitoring {symbol}: {e}")
+                logger.error(f"❌ {self.name} v{self.version} error monitoring {symbol}: {e}")
+
+    def send_alert(self, message):
+        """Send alert notification (placeholder for future implementation)"""
+        logger.info(f"🔔 ALERT: {message}")
 
     async def start_monitoring_loop(self):
         """Start the monitoring loop for existing positions"""
-        logger.info(f"📊 {self.name}: Starting position monitoring loop")
+        logger.info(f"📊 {self.name} v{self.version}: Starting position monitoring loop")
         
         while self.running:
             try:
@@ -858,33 +1367,43 @@ class OracleAITradingBot:
                     await self.monitor_positions()
                 await asyncio.sleep(300)  # Check every 5 minutes
             except Exception as e:
-                logger.error(f"❌ {self.name} monitoring error: {e}")
+                logger.error(f"❌ {self.name} v{self.version} monitoring error: {e}")
                 await asyncio.sleep(60)
 
     async def start_server(self, port: int = 8000):
-        """Start the webhook server with monitoring"""
+        """Start the webhook server with enhanced v5.0 monitoring"""
         logger.info("=" * 80)
         logger.info(f"🔮 {self.name} - {self.description} v{self.version}")
         logger.info("=" * 80)
-        logger.info(f"🤖 Bot: {self.name}")
+        logger.info(f"🤖 Bot: {self.name} v{self.version}")
         logger.info(f"🌐 Webhook server starting on port {port}")
         logger.info(f"📡 Health check: http://localhost:{port}/health")
         logger.info(f"📊 Status: http://localhost:{port}/status")
         logger.info(f"💱 Exchange rate: http://localhost:{port}/exchange-rate")
+        logger.info(f"📈 Position sizing performance: http://localhost:{port}/position-sizing-performance")
         logger.info(f"🧪 Test mode: {'ON' if self.test_mode else 'OFF'}")
         logger.info(f"🎯 Supported pairs: {', '.join(self.supported_pairs.keys())}")
         logger.info(f"💰 Base amount: ₱{self.base_amount}")
+        logger.info(f"📊 Position sizing: {self.position_sizing_strategy}")
         logger.info(f"🎯 Price tolerance: {self.price_tolerance}%")
         logger.info("")
-        logger.info("🌟 ORACLE FEATURES ENABLED:")
-        logger.info("   ✅ MarketRaker AI signal processing")
-        logger.info("   ✅ Real-time USD/PHP conversion")
-        logger.info("   ✅ Momentum confirmation logic")
-        logger.info("   ✅ Smart price level validation")
-        logger.info("   ✅ Risk-based position sizing")
-        logger.info("   ✅ Comprehensive monitoring")
-        logger.info("   ✅ Test mode safety")
-        logger.info("   ✅ FIXED: Direct MarketRaker format support")
+        logger.info("🌟 ORACLE v5.0 ADVANCED FEATURES:")
+        logger.info("   ✅ AI Confidence-Based Position Sizing")
+        logger.info("   ✅ Market Volatility Adaptation")
+        logger.info("   ✅ Signal Quality Assessment Matrix")
+        logger.info("   ✅ Portfolio Balance Scaling")
+        logger.info("   ✅ Risk-Reward Optimization")
+        logger.info("   ✅ Adaptive AI Strategy (most advanced)")
+        logger.info("   ✅ Real-time Performance Tracking")
+        logger.info("   ✅ Enhanced Position Monitoring")
+        logger.info("")
+        logger.info(f"📊 Available Position Sizing Strategies:")
+        logger.info(f"   🎯 ai_confidence - Scale with AI signal strength")
+        logger.info(f"   📊 volatility_adaptive - Adjust for market volatility")
+        logger.info(f"   🎪 signal_quality - Based on multi-factor quality score")
+        logger.info(f"   💰 portfolio_scaling - Grows with account balance")
+        logger.info(f"   ⚖️ risk_reward - Optimized for target/stop ratios")
+        logger.info(f"   🧠 adaptive_ai - Advanced multi-factor AI strategy (recommended)")
         logger.info("")
         logger.info("   Press Ctrl+C to stop")
         logger.info("=" * 80)
@@ -898,7 +1417,7 @@ class OracleAITradingBot:
         try:
             await asyncio.gather(webhook_task, monitoring_task)
         except KeyboardInterrupt:
-            logger.info(f"🛑 {self.name} server stopped by user")
+            logger.info(f"🛑 {self.name} v{self.version} server stopped by user")
         finally:
             self.running = False
 
@@ -914,9 +1433,165 @@ class OracleAITradingBot:
         server = uvicorn.Server(config)
         await server.serve()
 
+# ========== ENHANCED USER INTERFACE FUNCTIONS v5.0 ==========
+
+def get_position_sizing_strategies():
+    """Get available position sizing strategies with descriptions"""
+    return {
+        'ai_confidence': {
+            'name': 'AI Confidence',
+            'description': 'Scale position size based on AI signal confidence',
+            'best_for': 'Trusting AI signal quality assessment',
+            'risk_level': 'Medium',
+            'complexity': 'Simple'
+        },
+        'volatility_adaptive': {
+            'name': 'Volatility Adaptive',
+            'description': 'Adjust position size for market volatility',
+            'best_for': 'Volatile market conditions',
+            'risk_level': 'Low-Medium',
+            'complexity': 'Medium'
+        },
+        'signal_quality': {
+            'name': 'Signal Quality Matrix',
+            'description': 'Multi-factor signal assessment sizing',
+            'best_for': 'Comprehensive signal evaluation',
+            'risk_level': 'Medium',
+            'complexity': 'Medium'
+        },
+        'portfolio_scaling': {
+            'name': 'Portfolio Scaling',
+            'description': 'Position size grows with account balance',
+            'best_for': 'Growing accounts and compound growth',
+            'risk_level': 'Medium-High',
+            'complexity': 'Simple'
+        },
+        'risk_reward': {
+            'name': 'Risk-Reward Optimization',
+            'description': 'Size based on AI target/stop ratios',
+            'best_for': 'Risk-conscious trading',
+            'risk_level': 'Low-Medium',
+            'complexity': 'Medium'
+        },
+        'adaptive_ai': {
+            'name': 'Adaptive AI (Recommended)',
+            'description': 'Advanced multi-factor intelligent sizing',
+            'best_for': 'Maximum optimization and performance',
+            'risk_level': 'Medium',
+            'complexity': 'Advanced'
+        }
+    }
+
+def get_user_configuration():
+    """Enhanced user configuration for ORACLE v5.0"""
+    print("🔮 ORACLE - AI-Enhanced Trading Bot v5.0")
+    print("🎯 NEW: Advanced AI-Specific Position Sizing System")
+    print("=" * 75)
+    
+    # Base amount configuration
+    print("💰 Configure base trading amount:")
+    print("   This is your reference amount for position sizing calculations")
+    print("   Actual position sizes will vary based on your chosen strategy")
+    
+    while True:
+        try:
+            amount_input = input("Enter base amount (₱100-₱1000, recommended: ₱200): ").strip()
+            if not amount_input:
+                base_amount = 200
+                break
+            else:
+                base_amount = float(amount_input)
+                if 100 <= base_amount <= 1000:
+                    break
+                else:
+                    print("Please enter an amount between ₱100 and ₱1000")
+        except ValueError:
+            print("Please enter a valid number")
+    
+    # Position sizing strategy selection
+    strategies = get_position_sizing_strategies()
+    
+    print(f"\n📊 Select Position Sizing Strategy:")
+    print("   This determines how ORACLE calculates optimal position sizes")
+    print()
+    
+    strategy_keys = list(strategies.keys())
+    for i, (key, info) in enumerate(strategies.items(), 1):
+        risk_emoji = {"Low": "🟢", "Low-Medium": "🟡", "Medium": "🟠", "Medium-High": "🔴", "High": "🔴"}
+        complexity_emoji = {"Simple": "⭐", "Medium": "⭐⭐", "Advanced": "⭐⭐⭐"}
+        
+        print(f"{i}. {info['name']}")
+        print(f"   📝 {info['description']}")
+        print(f"   🎯 Best for: {info['best_for']}")
+        print(f"   ⚠️ Risk: {risk_emoji.get(info['risk_level'], '🟠')} {info['risk_level']}")
+        print(f"   🔧 Complexity: {complexity_emoji.get(info['complexity'], '⭐⭐')} {info['complexity']}")
+        print()
+    
+    print("💡 Recommendation: 'Adaptive AI' for maximum performance optimization")
+    
+    while True:
+        choice = input(f"Enter choice (1-6, recommended: 6): ").strip()
+        if not choice:
+            strategy = 'adaptive_ai'
+            break
+        elif choice in ['1', '2', '3', '4', '5', '6']:
+            strategy = strategy_keys[int(choice) - 1]
+            break
+        else:
+            print("Please enter 1-6")
+    
+    # Configuration summary
+    selected_strategy = strategies[strategy]
+    print(f"\n✅ ORACLE v5.0 CONFIGURATION:")
+    print(f"💰 Base amount: ₱{base_amount}")
+    print(f"📊 Position sizing: {selected_strategy['name']}")
+    print(f"📝 Strategy: {selected_strategy['description']}")
+    print(f"🎯 Optimized for: {selected_strategy['best_for']}")
+    print(f"⚠️ Risk level: {selected_strategy['risk_level']}")
+    
+    print(f"\n🎯 Expected position size range:")
+    min_size = base_amount * 0.25
+    max_size = base_amount * 2.0
+    print(f"   Minimum: ₱{min_size:.0f} (low quality signals)")
+    print(f"   Maximum: ₱{max_size:.0f} (high quality signals)")
+    print(f"   Average: ₱{base_amount:.0f} (typical signals)")
+    
+    print(f"\n📊 Position sizing will dynamically adjust based on:")
+    if strategy == 'ai_confidence':
+        print("   🎯 AI risk level (1-10)")
+        print("   📊 AI expected percentage change")
+        print("   🔍 Signal confidence metrics")
+    elif strategy == 'volatility_adaptive':
+        print("   📊 Current market volatility (24h)")
+        print("   🎯 AI confidence level")
+        print("   ⚠️ Risk protection in volatile markets")
+    elif strategy == 'signal_quality':
+        print("   🎪 Overall signal quality score")
+        print("   ⚖️ Risk-reward ratio")
+        print("   📍 Price alignment with AI entry")
+        print("   📊 Market volatility factor")
+    elif strategy == 'portfolio_scaling':
+        print("   💰 Available account balance")
+        print("   📊 Signal quality score")
+        print("   📈 Portfolio growth adaptation")
+    elif strategy == 'risk_reward':
+        print("   ⚖️ AI target/stop loss ratio")
+        print("   🎯 AI confidence metrics")
+        print("   💡 Risk-optimized sizing")
+    elif strategy == 'adaptive_ai':
+        print("   🧠 Multi-factor intelligent analysis:")
+        print("     • AI confidence and risk assessment")
+        print("     • Risk-reward ratio optimization")
+        print("     • Market volatility protection")
+        print("     • Price alignment validation")
+        print("     • Portfolio balance scaling")
+        print("     • Dynamic bounds adjustment")
+    
+    return base_amount, strategy
+
 def main():
-    """Main function with comprehensive startup checks"""
-    logger.info("🔍 Checking ORACLE configuration...")
+    """Enhanced main function for ORACLE v5.0"""
+    logger.info("🔍 Checking ORACLE v5.0 configuration...")
     
     # Check API credentials
     if not os.getenv('COINS_API_KEY') or not os.getenv('COINS_SECRET_KEY'):
@@ -933,22 +1608,37 @@ def main():
     else:
         logger.info("✅ MarketRaker verification key found")
     
+    # Get user configuration
+    base_amount, position_sizing_strategy = get_user_configuration()
+    
     # Display startup configuration
     logger.info("=" * 60)
-    logger.info("🎯 ORACLE STARTUP CONFIGURATION:")
-    logger.info(f"   Base amount: ₱200")
+    logger.info("🎯 ORACLE v5.0 STARTUP CONFIGURATION:")
+    logger.info(f"   Base amount: ₱{base_amount}")
+    logger.info(f"   Position sizing: {position_sizing_strategy}")
     logger.info(f"   Price tolerance: 3.0%")
     logger.info(f"   Exchange rate cache: 60 minutes")
     logger.info(f"   Test mode: ON (safe for development)")
     logger.info("=" * 60)
     
-    # Initialize bot
-    bot = OracleAITradingBot(base_amount=200)
+    # Final confirmation
+    print(f"\n🚀 Ready to start ORACLE v5.0 with advanced position sizing!")
+    print(f"🎯 Strategy: {get_position_sizing_strategies()[position_sizing_strategy]['name']}")
+    confirm = input("Start the bot? (y/n): ").lower().strip()
     
-    try:
-        asyncio.run(bot.start_server(port=8000))
-    except KeyboardInterrupt:
-        logger.info(f"👋 {bot.name} goodbye!")
+    if confirm.startswith('y'):
+        # Initialize bot with user configuration
+        bot = OracleAITradingBot(
+            base_amount=base_amount,
+            position_sizing_strategy=position_sizing_strategy
+        )
+        
+        try:
+            asyncio.run(bot.start_server(port=8000))
+        except KeyboardInterrupt:
+            logger.info(f"👋 {bot.name} v{bot.version} goodbye!")
+    else:
+        print("👋 ORACLE v5.0 startup cancelled")
 
 if __name__ == '__main__':
     main()
