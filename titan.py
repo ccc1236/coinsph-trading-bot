@@ -19,16 +19,16 @@ load_dotenv(override=True)
 
 class TitanTradingBot:
     """
-    🤖 TITAN - Advanced Momentum Trading Bot v3.0
+    🤖 TITAN - Advanced Momentum Trading Bot v3.3
     
-    Pure momentum-based trading with configurable take profit levels.
+    Pure momentum-based trading with configurable position sizing, take profit levels, and trade amounts.
     Optimized for high-frequency crypto trading on Coins.ph.
     """
     
-    def __init__(self, symbol='XRPPHP', take_profit_pct=5.0):
+    def __init__(self, symbol='XRPPHP', take_profit_pct=5.0, base_amount=200, position_sizing='fixed'):
         # Bot identity
         self.name = "TITAN"
-        self.version = "3.0.0"
+        self.version = "3.3.0"
         self.description = "Advanced Momentum Trading Bot"
         
         # Trading parameters - now configurable!
@@ -49,7 +49,8 @@ class TitanTradingBot:
         self.buy_threshold = 0.006      # 0.6% momentum trigger
         self.sell_threshold = 0.010     # 1.0% decline trigger
         self.take_profit_pct = take_profit_pct / 100  # Convert to decimal
-        self.base_amount = 200          # ₱200 per trade
+        self.base_amount = base_amount  # ₱ per trade - NOW CONFIGURABLE!
+        self.position_sizing = position_sizing  # Position sizing strategy
         self.min_hold_hours = 0.5       # 30 minutes minimum hold
         self.max_trades_per_day = 10    # Safety limit
         self.trend_window = 12          # 12 hours trend analysis
@@ -70,7 +71,8 @@ class TitanTradingBot:
         self.logger.info(f"📈 Buy threshold: {self.buy_threshold*100:.1f}%")
         self.logger.info(f"📉 Sell threshold: {self.sell_threshold*100:.1f}%")
         self.logger.info(f"🎯 Take profit: {take_profit_pct:.1f}%")
-        self.logger.info(f"💰 Trade amount: ₱{self.base_amount}")
+        self.logger.info(f"💰 Base amount: ₱{self.base_amount}")
+        self.logger.info(f"📊 Position sizing: {self.position_sizing}")
         self.logger.info(f"⏰ Min hold time: {self.min_hold_hours}h")
         self.logger.info(f"🔄 Max trades/day: {self.max_trades_per_day}")
         self.logger.info(f"📊 Check interval: {self.check_interval//60} minutes")
@@ -129,6 +131,7 @@ class TitanTradingBot:
                             self.logger.info(f"   Min order size: ₱{min_notional}")
                             if self.base_amount < min_notional:
                                 self.logger.warning(f"⚠️ Trade amount (₱{self.base_amount}) below minimum (₱{min_notional})")
+                                self.logger.warning(f"   Consider increasing trade amount to at least ₱{min_notional + 1}")
                 
                 return symbol_info
             else:
@@ -161,8 +164,15 @@ class TitanTradingBot:
                 self.logger.info(f"💰 {self.base_asset} Balance: {asset_balance:.6f}")
                 
                 # Check if we have enough to trade
-                if php_balance < self.base_amount * 1.5:
-                    self.logger.warning(f"⚠️ Low PHP balance! Need at least ₱{self.base_amount * 1.5:.0f} for safe trading")
+                required_balance = self.base_amount * 2  # 2x for safety margin
+                if php_balance < required_balance:
+                    self.logger.warning(f"⚠️ Low PHP balance!")
+                    self.logger.warning(f"   Current: ₱{php_balance:.2f}")
+                    self.logger.warning(f"   Recommended: ₱{required_balance:.2f} (2x trade amount)")
+                    self.logger.warning(f"   You can make ~{int(php_balance / self.base_amount)} trades")
+                else:
+                    max_trades = int(php_balance / self.base_amount)
+                    self.logger.info(f"✅ Sufficient balance for ~{max_trades} trades")
                 
                 return account
             else:
@@ -172,6 +182,121 @@ class TitanTradingBot:
         except Exception as e:
             self.logger.error(f"❌ Error checking account: {e}")
             return None
+
+    def calculate_position_size(self, current_price, momentum, trend):
+        """
+        Calculate dynamic position size based on selected strategy
+        
+        Args:
+            current_price: Current asset price
+            momentum: Current momentum score
+            trend: Current trend score
+            
+        Returns:
+            Position size in PHP
+        """
+        
+        if self.position_sizing == 'fixed':
+            # Original fixed amount
+            return self.base_amount
+            
+        elif self.position_sizing == 'percentage':
+            # Percentage of available balance (conservative)
+            php_balance = self.api.get_balance('PHP')
+            available_balance = php_balance['free'] if php_balance else 0
+            position_pct = 0.10  # 10% of available balance
+            calculated_size = available_balance * position_pct
+            
+            # Ensure within reasonable bounds
+            min_size = self.base_amount * 0.5  # At least 50% of base
+            max_size = self.base_amount * 2.0  # At most 200% of base
+            
+            return max(min_size, min(calculated_size, max_size))
+            
+        elif self.position_sizing == 'momentum':
+            # Adjust size based on momentum strength
+            base_size = self.base_amount
+            
+            # Strong momentum = larger position
+            if abs(momentum) > 0.012:  # 1.2% momentum
+                multiplier = 1.4
+            elif abs(momentum) > 0.008:  # 0.8% momentum  
+                multiplier = 1.2
+            elif abs(momentum) > 0.006:  # 0.6% momentum (threshold)
+                multiplier = 1.0
+            else:
+                multiplier = 0.8  # Weak momentum
+            
+            # Apply trend filter
+            if trend < -0.03:  # Strong downtrend
+                multiplier *= 0.7  # Reduce size
+            elif trend > 0.02:  # Strong uptrend
+                multiplier *= 1.1  # Slightly increase
+                
+            calculated_size = base_size * multiplier
+            
+            # Bounds checking
+            min_size = self.base_amount * 0.5
+            max_size = self.base_amount * 1.5
+            
+            return max(min_size, min(calculated_size, max_size))
+            
+        elif self.position_sizing == 'adaptive':
+            # Advanced: Combine balance, momentum, and recent performance
+            php_balance = self.api.get_balance('PHP')
+            available_balance = php_balance['free'] if php_balance else 0
+            
+            # Base sizing on available balance
+            balance_multiplier = min(2.0, available_balance / (self.base_amount * 5))
+            
+            # Momentum adjustment
+            momentum_strength = abs(momentum)
+            if momentum_strength > 0.015:
+                momentum_multiplier = 1.3
+            elif momentum_strength > 0.010:
+                momentum_multiplier = 1.1
+            elif momentum_strength > 0.006:
+                momentum_multiplier = 1.0
+            else:
+                momentum_multiplier = 0.8
+            
+            # Trend adjustment
+            if trend > 0.02:
+                trend_multiplier = 1.1
+            elif trend < -0.03:
+                trend_multiplier = 0.8
+            else:
+                trend_multiplier = 1.0
+            
+            # Daily trades adjustment (reduce size if many trades today)
+            today = datetime.now().strftime('%Y-%m-%d')
+            trades_today = self.daily_trades.get(today, 0)
+            if trades_today >= 7:
+                trade_multiplier = 0.7
+            elif trades_today >= 5:
+                trade_multiplier = 0.9
+            else:
+                trade_multiplier = 1.0
+            
+            # Calculate final size
+            total_multiplier = balance_multiplier * momentum_multiplier * trend_multiplier * trade_multiplier
+            calculated_size = self.base_amount * total_multiplier
+            
+            # Apply bounds
+            min_size = self.base_amount * 0.3  # More flexible bounds
+            max_size = self.base_amount * 2.0
+            
+            final_size = max(min_size, min(calculated_size, max_size))
+            
+            self.logger.info(f"📊 Adaptive sizing: Balance×{balance_multiplier:.1f}, "
+                           f"Momentum×{momentum_multiplier:.1f}, Trend×{trend_multiplier:.1f}, "
+                           f"Trades×{trade_multiplier:.1f} = ₱{final_size:.0f}")
+            
+            return final_size
+        
+        else:
+            # Fallback to fixed
+            return self.base_amount
 
     def calculate_quantity(self, price, amount_php):
         """Calculate quantity to buy with given PHP amount"""
@@ -240,7 +365,7 @@ class TitanTradingBot:
             # BUY CONDITIONS
             if (price_change > self.buy_threshold and           # Strong upward momentum
                 trend > -0.02 and                               # Not in strong downtrend
-                php_free > self.base_amount * 1.2 and          # Have enough PHP
+                php_free > self.base_amount * 0.6 and          # Have enough PHP (reduced requirement)
                 self.can_trade_today() and                     # Within daily limit
                 self.position is None):                        # No current position
                 
@@ -276,17 +401,30 @@ class TitanTradingBot:
             self.logger.error(f"❌ Error in strategy execution: {e}")
 
     def place_buy_order(self, price, change, trend):
-        """Place a buy order"""
+        """Place a buy order with dynamic position sizing"""
         try:
-            # Calculate order details
-            amount_to_spend = min(self.base_amount, self.api.get_balance('PHP')['free'] * 0.9)
+            # Calculate dynamic position size
+            position_size = self.calculate_position_size(price, change, trend)
+            
+            # Ensure we have enough balance
+            php_balance = self.api.get_balance('PHP')
+            available_balance = php_balance['free'] if php_balance else 0
+            
+            # Use the smaller of calculated size or 90% of available balance
+            amount_to_spend = min(position_size, available_balance * 0.9)
+            
+            if amount_to_spend < 50:  # Minimum viable trade
+                self.logger.warning(f"⚠️ Position size too small: ₱{amount_to_spend:.2f}")
+                return
+            
             quantity = self.calculate_quantity(price, amount_to_spend)
             
             # Use limit order slightly above market for better fill probability
             buy_price = price * 1.001  # 0.1% above market
             
             self.logger.info(f"🔄 {self.name} attempting BUY: {quantity:.6f} {self.base_asset} at ₱{buy_price:.4f}")
-            self.logger.info(f"   💰 Amount: ₱{amount_to_spend:.2f} | Change: {change*100:+.2f}% | Trend: {trend*100:+.1f}%")
+            self.logger.info(f"   💰 Position size: ₱{amount_to_spend:.2f} ({self.position_sizing} sizing)")
+            self.logger.info(f"   📊 Change: {change*100:+.2f}% | Trend: {trend*100:+.1f}%")
             
             # Place the order
             order = self.api.place_order(
@@ -390,7 +528,7 @@ class TitanTradingBot:
         daily_trades = self.daily_trades.get(today, 0)
         
         self.logger.info(f"🤖 {self.name} Status: {status}")
-        self.logger.info(f"🎯 Trading: {self.symbol} with {self.take_profit_pct*100:.1f}% take profit")
+        self.logger.info(f"🎯 Trading: {self.symbol} with {self.take_profit_pct*100:.1f}% TP, {self.position_sizing} sizing")
         self.logger.info(f"{position_status}")
         self.logger.info(f"📈 Daily trades: {daily_trades}/{self.max_trades_per_day}")
         
@@ -401,7 +539,7 @@ class TitanTradingBot:
     def start(self):
         """Start the trading bot"""
         self.logger.info(f"🚀 Starting {self.name} - {self.description} v{self.version}")
-        self.logger.info(f"🎯 Asset: {self.symbol} | Take Profit: {self.take_profit_pct*100:.1f}%")
+        self.logger.info(f"🎯 Asset: {self.symbol} | Take Profit: {self.take_profit_pct*100:.1f}% | Position Sizing: {self.position_sizing}")
         
         # Validate setup
         if not self.get_symbol_info():
@@ -442,9 +580,9 @@ class TitanTradingBot:
 
 def get_user_inputs():
     """Get trading parameters from user"""
-    print("🤖 TITAN - Advanced Momentum Trading Bot v3.0")
-    print("💡 Choose your trading asset and take profit level")
-    print("=" * 60)
+    print("🤖 TITAN - Advanced Momentum Trading Bot v3.3")
+    print("💡 Choose your trading asset, position sizing, and take profit level")
+    print("=" * 75)
     
     # Asset selection
     print("🎯 Select trading asset:")
@@ -468,6 +606,74 @@ def get_user_inputs():
             break
         else:
             print("Please enter 1, 2, or 3")
+    
+    # Position sizing selection
+    print(f"\n📊 Select position sizing strategy:")
+    print(f"1. Fixed - Same amount every trade (you choose amount)")
+    print(f"2. Percentage - 10% of available balance")
+    print(f"3. Momentum - Larger positions on stronger signals")
+    print(f"4. Adaptive - Smart sizing based on multiple factors")
+    print(f"💡 Recommended: Adaptive (balances risk and opportunity)")
+    
+    position_sizing_map = {
+        '1': 'fixed',
+        '2': 'percentage', 
+        '3': 'momentum',
+        '4': 'adaptive'
+    }
+    
+    while True:
+        sizing_choice = input("Enter choice (1-4): ").strip()
+        if sizing_choice in position_sizing_map:
+            position_sizing = position_sizing_map[sizing_choice]
+            break
+        else:
+            print("Please enter 1, 2, 3, or 4")
+    
+    # Base amount configuration - different for fixed vs others
+    if position_sizing == 'fixed':
+        print(f"\n💰 Set fixed trade amount:")
+        print(f"💡 Recommended: ₱200 (balanced risk/reward)")
+        print(f"📊 This exact amount will be used for every trade")
+        print(f"   ₱100 - Conservative (lower risk)")
+        print(f"   ₱200 - Balanced")
+        print(f"   ₱300 - Moderate")
+        print(f"   ₱500 - Aggressive (higher risk)")
+        
+        while True:
+            try:
+                amount_input = input("Enter fixed trade amount in PHP (suggested: 200): ").strip()
+                if not amount_input:  # Use suggested if empty
+                    base_amount = 200
+                    break
+                else:
+                    base_amount = float(amount_input)
+                    if 50 <= base_amount <= 2000:
+                        break
+                    else:
+                        print("Please enter an amount between ₱50 and ₱2000")
+            except ValueError:
+                print("Please enter a valid number")
+    else:
+        # For dynamic strategies, base amount is just a reference
+        print(f"\n💰 Set base reference amount (for dynamic sizing calculations):")
+        print(f"💡 Recommended: ₱200")
+        print(f"📊 Actual trade sizes will vary based on your {position_sizing} strategy")
+        
+        while True:
+            try:
+                amount_input = input("Enter base amount in PHP (suggested: 200): ").strip()
+                if not amount_input:  # Use suggested if empty
+                    base_amount = 200
+                    break
+                else:
+                    base_amount = float(amount_input)
+                    if 50 <= base_amount <= 2000:
+                        break
+                    else:
+                        print("Please enter an amount between ₱50 and ₱2000")
+            except ValueError:
+                print("Please enter a valid number")
     
     # Take profit selection
     print(f"\n🎯 Configure take profit for {symbol}:")
@@ -493,15 +699,66 @@ def get_user_inputs():
         except ValueError:
             print("Please enter a valid number")
     
+    # Position sizing explanations
+    if position_sizing == 'fixed':
+        position_description = f"₱{base_amount} every trade (fixed amount)"
+    else:
+        position_descriptions = {
+            'percentage': f"10% of available balance (~₱{base_amount*2}-{base_amount*5})",
+            'momentum': f"₱{base_amount*0.5:.0f}-₱{base_amount*1.5:.0f} based on signal strength",
+            'adaptive': f"₱{base_amount*0.3:.0f}-₱{base_amount*2:.0f} smart adjustments"
+        }
+        position_description = position_descriptions[position_sizing]
+    
+    # Risk calculation for display
+    if position_sizing == 'fixed':
+        max_daily_risk = base_amount * 10  # Fixed amount × 10 trades
+        avg_position = base_amount
+    elif position_sizing == 'percentage':
+        max_daily_risk = base_amount * 15  # Estimate
+        avg_position = base_amount * 2
+    else:
+        max_daily_risk = base_amount * 12  # Estimate
+        avg_position = base_amount * 1.2
+    
     # Confirmation
     print(f"\n✅ CONFIGURATION CONFIRMED:")
     print(f"🎯 Asset: {symbol}")
-    print(f"📈 Take Profit: {take_profit:.1f}%")
-    print(f"💰 Trade Size: ₱200")
-    print(f"⏰ Check Interval: 15 minutes")
-    print(f"📁 Log File: logs/titan_{symbol.replace('PHP', '').lower()}.log")
+    print(f"📊 Position sizing: {position_sizing.title()} ({position_description})")
+    if position_sizing != 'fixed':
+        print(f"💰 Base reference: ₱{base_amount}")
+    print(f"📈 Take profit: {take_profit:.1f}%")
+    print(f"⏰ Check interval: 15 minutes")
+    print(f"📁 Log file: logs/titan_{symbol.replace('PHP', '').lower()}.log")
+    print(f"\n💡 POSITION SIZING DETAILS:")
     
-    return symbol, take_profit
+    if position_sizing == 'fixed':
+        print(f"   📊 Every trade: ₱{base_amount} (exact amount)")
+        print(f"   📈 Consistent and predictable")
+        print(f"   🎯 Simple risk management")
+        print(f"   💰 Total daily exposure: Up to ₱{base_amount * 10} (10 trades max)")
+    elif position_sizing == 'percentage':
+        print(f"   📊 Trade size: 10% of available balance")
+        print(f"   📈 Grows with account")
+        print(f"   🎯 Conservative scaling")
+    elif position_sizing == 'momentum':
+        print(f"   📊 Strong momentum: ₱{base_amount*1.4:.0f}")
+        print(f"   📊 Normal momentum: ₱{base_amount}")
+        print(f"   📊 Weak momentum: ₱{base_amount*0.8:.0f}")
+        print(f"   🎯 Signal-based sizing")
+    elif position_sizing == 'adaptive':
+        print(f"   📊 Considers: Balance, momentum, trend, daily trades")
+        print(f"   📈 Range: ₱{base_amount*0.3:.0f} - ₱{base_amount*2:.0f}")
+        print(f"   🎯 Most sophisticated approach")
+    
+    print(f"\n💡 RISK ANALYSIS:")
+    print(f"📊 Est. max daily risk: ₱{max_daily_risk:.0f}")
+    print(f"💰 Recommended balance: ₱{max_daily_risk * 2:.0f}+")
+    print(f"📈 Average position: ~₱{avg_position:.0f}")
+    
+    return symbol, take_profit, base_amount, position_sizing
+    
+    return symbol, take_profit, base_amount
 
 def main():
     """Main function"""
@@ -512,15 +769,16 @@ def main():
         return
     
     # Get user configuration
-    symbol, take_profit = get_user_inputs()
+    symbol, take_profit, base_amount, position_sizing = get_user_inputs()
     
     # Confirm start
     print(f"\n🚀 Ready to start live trading with TITAN!")
+    print(f"⚠️ Risk: Dynamic position sizing with {position_sizing} strategy")
     confirm = input("Start the bot? (y/n): ").lower().strip()
     
     if confirm.startswith('y'):
         # Initialize and start bot
-        bot = TitanTradingBot(symbol=symbol, take_profit_pct=take_profit)
+        bot = TitanTradingBot(symbol=symbol, take_profit_pct=take_profit, base_amount=base_amount, position_sizing=position_sizing)
         bot.start()
     else:
         print("👋 TITAN startup cancelled")
