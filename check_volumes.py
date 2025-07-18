@@ -160,8 +160,6 @@ def check_trading_volumes():
                 print("   - Tighter spreads (better prices)")
                 print("   - More price movements (more trading opportunities)")
                 print()
-                print(f"To switch, update your .env file:")
-                print(f"TRADING_SYMBOL={top_php['symbol']}")
             else:
                 print("✅ You're already using the highest volume PHP pair!")
         
