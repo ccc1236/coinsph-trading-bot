@@ -1,7 +1,7 @@
 """
 🔮 PROPHET v3.1 - Enhanced with Ecosystem Integration
 
-NEW in v3.1:
+NEW in v3.1: Ecosystem Integration Features
 - ✅ Loads research insights from Ecosystem Manager
 - ✅ Smart asset suggestions based on ecosystem data
 - ✅ Enhanced default parameter selection using ecosystem insights
@@ -9,8 +9,8 @@ NEW in v3.1:
 - ✅ Ecosystem-aware optimization with better starting points
 - ✅ Maintains all v3.0 functionality with ecosystem enhancements
 
-SAVE THIS FILE AS: prophet_v31.py
-Then run: python prophet_v31.py
+SAVE THIS FILE AS: prophet.py
+Then run: python prophet.py
 """
 
 import os
@@ -38,7 +38,7 @@ try:
     print("✅ Ecosystem Manager available - will load research insights")
 except ImportError:
     ECOSYSTEM_AVAILABLE = False
-    print("⚠️ Ecosystem Manager not available - using v3.0 functionality")
+    print("⚠️ Ecosystem Manager not available - using core functionality")
 
 try:
     import pandas as pd
@@ -51,7 +51,7 @@ load_dotenv(override=True)
 
 class ProphetEcosystemEnhanced:
     """
-    🔮 PROPHET v3.1 - Enhanced with Ecosystem Integration
+    🔮 PROPHET - Enhanced with Ecosystem Integration
     
     NEW: Loads research insights from ecosystem to provide smarter optimization
     """
@@ -598,7 +598,7 @@ class ProphetEcosystemEnhanced:
 
     def find_optimal_parameters(self, days_list=[30, 60]):
         """Find optimal parameters with enhanced ecosystem intelligence"""
-        print(f"\n🔮 PROPHET v3.1 Enhanced Ecosystem Analysis for {self.symbol}")
+        print(f"\n🔮 PROPHET Enhanced Ecosystem Analysis for {self.symbol}")
         
         ecosystem_insight = self.get_ecosystem_asset_insight(self.symbol)
         if ecosystem_insight:
@@ -666,7 +666,7 @@ class ProphetEcosystemEnhanced:
             best_period = period_df.loc[period_df['return_pct'].idxmax()]
             period_results[period] = best_period
         
-        print(f"\n🏆 PROPHET v3.1 ENHANCED ECOSYSTEM OPTIMIZATION RESULTS")
+        print(f"\n🏆 PROPHET ENHANCED ECOSYSTEM OPTIMIZATION RESULTS")
         print("=" * 80)
         
         # Show ecosystem context
@@ -841,7 +841,7 @@ class ProphetEcosystemEnhanced:
             except (FileNotFoundError, json.JSONDecodeError):
                 existing_data = {
                     'timestamp': datetime.now().isoformat(),
-                    'prophet_version': '3.1',
+                    'prophet_version': 'latest',
                     'ecosystem_integration': ECOSYSTEM_AVAILABLE,
                     'recommendations': {}
                 }
@@ -857,7 +857,7 @@ class ProphetEcosystemEnhanced:
             with open(reco_file, 'w') as f:
                 json.dump(existing_data, f, indent=2)
             
-            print(f"\n💾 PROPHET v3.1 ENHANCED RECOMMENDATIONS SAVED!")
+            print(f"\n💾 PROPHET ENHANCED RECOMMENDATIONS SAVED!")
             print(f"📁 File: {reco_file}")
             print(f"🎯 {symbol}: Buy {best_config['buy_threshold']:.1f}%, Sell {best_config['sell_threshold']:.1f}%, TP {best_config['take_profit']:.1f}%")
             print(f"🌐 Ecosystem Integration: {'✅ Enabled' if ECOSYSTEM_AVAILABLE else '❌ Disabled'}")
@@ -1004,13 +1004,13 @@ def get_symbol_suggestions():
         return php_pairs[:15]
         
     except Exception as e:
-        print(f"❌ Error getting symbol suggestions: {e}")
+        print(f"Error getting symbol suggestions: {e}")
         return []
 
 def main():
     """Enhanced main function with ecosystem integration"""
     try:
-        print("🔮 PROPHET v3.1 - Enhanced with Ecosystem Integration")
+        print("🔮 PROPHET - Enhanced with Ecosystem Integration")
         print("🧠 NEW: Smart optimization using ecosystem research insights")
         print("💾 Enhanced recommendations with cross-tool intelligence")
         print("=" * 75)
@@ -1023,7 +1023,7 @@ def main():
         if ECOSYSTEM_AVAILABLE:
             print("✅ Ecosystem Manager available - will load research insights")
         else:
-            print("⚠️ Ecosystem Manager not available - using v3.0 functionality")
+            print("⚠️ Ecosystem Manager not available - using core functionality")
         
         # Initialize Prophet with ecosystem capabilities
         prophet = ProphetEcosystemEnhanced()
@@ -1083,7 +1083,7 @@ def main():
                 except ValueError:
                     print("Please enter a valid number")
                 except KeyboardInterrupt:
-                    print("\n🔮 PROPHET v3.1 session ended gracefully")
+                    print("\n🔮 PROPHET session ended gracefully")
                     return
                     
         elif choice == '7':
@@ -1109,7 +1109,7 @@ def main():
                 except ValueError:
                     print("⚠️  Please enter a valid number")
                 except KeyboardInterrupt:
-                    print("\n🔮 PROPHET v3.1 session ended gracefully")
+                    print("\n🔮 PROPHET session ended gracefully")
                     return
                     
         elif choice == '8':
@@ -1118,7 +1118,7 @@ def main():
                 if not symbol.endswith('PHP'):
                     symbol += 'PHP'
             except KeyboardInterrupt:
-                print("\n🔮 PROPHET v3.1 session ended gracefully")
+                print("\n🔮 PROPHET session ended gracefully")
                 return
             
         else:
@@ -1165,10 +1165,10 @@ def main():
         try:
             confirm = input(f"🔮 Start enhanced ecosystem optimization? (y/n): ").lower()
             if not confirm.startswith('y'):
-                print("🔮 PROPHET v3.1 awaits your return.")
+                print("🔮 PROPHET awaits your return.")
                 return
         except KeyboardInterrupt:
-            print("\n🔮 PROPHET v3.1 session ended gracefully")
+            print("\n🔮 PROPHET session ended gracefully")
             return
         
         # Run enhanced optimization with ecosystem intelligence
@@ -1182,15 +1182,15 @@ def main():
                 save_success = prophet.save_enhanced_recommendations_for_titan(best_config, symbol, all_results=results)
                 
                 if save_success:
-                    print(f"\n🎉 PROPHET v3.1 ENHANCED ECOSYSTEM OPTIMIZATION COMPLETE!")
+                    print(f"\n🎉 PROPHET ENHANCED ECOSYSTEM OPTIMIZATION COMPLETE!")
                     print(f"💾 Enhanced recommendations saved to prophet_reco.json")
                     print(f"🌐 Ecosystem context included for cross-tool intelligence")
                     print(f"🤖 TITAN will now load these ecosystem-enhanced settings for {symbol}")
                     
                     print(f"\n📋 NEXT STEPS:")
                     print("=" * 60)
-                    print("🔮 python prophet_v31.py → ✅ DONE (generated ecosystem-enhanced recommendations)")
-                    print("🤖 python titan.py        → Load Prophet's ecosystem-optimized findings")
+                    print("🔮 python prophet.py → ✅ DONE (generated ecosystem-enhanced recommendations)")
+                    print("🤖 python titan.py   → Load Prophet's ecosystem-optimized findings")
                     print("=" * 60)
                     print(f"✨ When you run TITAN, it will automatically suggest:")
                     print(f"   📈 Buy: {best_config['buy_threshold']:.1f}% (ecosystem-enhanced)")
@@ -1207,10 +1207,10 @@ def main():
             print("❌ No results generated. Check your data connection.")
             
     except KeyboardInterrupt:
-        print("\n🔮 PROPHET v3.1 session ended gracefully")
+        print("\n🔮 PROPHET session ended gracefully")
         print("✨ Thank you for consulting enhanced PROPHET with ecosystem intelligence")
     except Exception as e:
-        print(f"\n❌ PROPHET v3.1 encountered an error: {e}")
+        print(f"\n❌ PROPHET encountered an error: {e}")
         print("🔮 Please try again or check your configuration")
 
 if __name__ == "__main__":
