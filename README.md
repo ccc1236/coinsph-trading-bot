@@ -6,9 +6,9 @@
 
 ## 🌟 Meet the Bots
 
-### 🤖 **TITAN** - Advanced Momentum Trading Bot v4.0
+### 🤖 **TITAN** - Advanced Momentum Trading Bot
 **Pure momentum-based trading with fully configurable thresholds and optimization-driven recommendations**
-- ✅ **NEW: Configurable Buy/Sell Thresholds** - No code changes needed, set at startup
+- ✅ **Configurable Buy/Sell Thresholds** - No code changes needed, set at startup
 - ✅ **Optimization-Driven Recommendations** - Backtesting discoveries integrated into setup
 - ✅ **Asset-Specific Parameter Suggestions** - Smart defaults based on volatility analysis
 - ✅ **Real-time Parameter Validation** - Market data analysis with live optimization suggestions
@@ -18,9 +18,9 @@
 - ✅ **Multi-asset support** with optimized parameters for each pair
 - ✅ **Comprehensive backtesting** integration with live parameter feedback
 
-### 🔮 **ORACLE** - AI-Enhanced Trading Bot v5.0
+### 🔮 **ORACLE** - AI-Enhanced Trading Bot
 **AI-powered trading with advanced position sizing and intelligent signal assessment**
-- ✅ **NEW: 6 Advanced Position Sizing Strategies** - AI-specific intelligent sizing
+- ✅ **6 Advanced Position Sizing Strategies** - AI-specific intelligent sizing
 - ✅ **Signal Quality Assessment Matrix** - Multi-dimensional signal evaluation
 - ✅ **Market Volatility Adaptation** - Dynamic sizing for market conditions
 - ✅ **Portfolio Balance Scaling** - Position size grows with account
@@ -45,20 +45,126 @@
 
 ### **🔧 Core Infrastructure**
 - `coinsph_api_v2.py` - Enhanced API wrapper with improved signature handling
-- `momentum_backtest_v45.py` - **NEW:** Multi-asset backtesting with TITAN position sizing
-- `take_profit_optimizer.py` - **ENHANCED:** All PHP pairs support with asset-specific optimization
+- `momentum_backtest.py` - Multi-asset backtesting with TITAN position sizing
+- `prophet.py` - Enhanced parameter optimization with ecosystem integration
 
 ### **📊 Analysis & Utilities**
 - `check_volumes.py` - Trading volume analysis and pair recommendations
 - `toggle_oracle_mode.py` - Quick ORACLE test/live mode switcher
 - `test_connection.py` - API connectivity and trading permissions validator
 - `test_exchange_rates.py` - USD/PHP exchange rate API testing
+- `ecosystem_manager.py` - Cross-tool data sharing and optimization
 
 ### **🔐 Configuration**
 - `.env.example` - Environment variables template
 - `requirements.txt` - Python dependencies
 - `.gitignore` - Git ignore rules
 - `README.md` - This comprehensive guide
+
+---
+
+## 🚀 Workflow: From Setup to Trading
+
+### **Step 1: Initial Setup**
+```bash
+git clone https://github.com/ccc1236/coinsph-trading-bot.git
+cd coinsph-trading-bot
+
+# Create virtual environment
+python -m venv venv
+venv\Scripts\activate   # Windows
+# source venv/bin/activate  # Linux/Mac
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure API credentials
+cp .env.example .env
+# Edit .env and add your Coins.ph API credentials
+```
+
+### **Step 2: Validate Setup**
+```bash
+python test_connection.py
+```
+This validates your API credentials and checks account permissions.
+
+### **Step 3: Choose Your Trading Approach**
+
+#### **🎯 Option A: Quick Start (Default Parameters)**
+```bash
+python titan.py
+```
+Start TITAN with built-in defaults. Good for immediate trading with proven settings.
+
+#### **🔬 Option B: Research-Driven Approach (Recommended)**
+For optimal performance, follow this research workflow:
+
+**1. Market Research & Asset Analysis**
+```bash
+python momentum_backtest.py
+```
+- Analyzes multiple assets over 30-60 day periods
+- Generates performance rankings and insights
+- **Produces:** `ecosystem_data/research_insights.json` with asset performance scores
+- **Creates:** Cross-asset volatility analysis and risk assessments
+
+**2. Parameter Optimization**
+```bash
+python prophet.py
+```
+- Loads research insights from Step 1
+- Suggests top-performing assets based on analysis
+- Tests thousands of parameter combinations
+- **Produces:** `prophet_reco.json` with optimized buy/sell/take-profit thresholds
+- **Creates:** Performance predictions and win rate estimates
+
+**3. Live Trading with Optimized Settings**
+```bash
+python titan.py
+```
+- Automatically detects and loads Prophet's recommendations
+- Shows expected performance based on backtesting
+- Uses research-driven asset suggestions
+- Applies ecosystem intelligence for parameter validation
+
+### **Step 4: AI Trading (Optional)**
+```bash
+python oracle.py
+```
+For AI-powered trading with MarketRaker signal integration.
+
+---
+
+## 📊 How the Ecosystem Works
+
+### **Data Flow Between Tools**
+
+```
+momentum_backtest.py → research_insights.json → prophet.py → prophet_reco.json → titan.py
+     ↓                                           ↓                              ↓
+Asset Analysis                          Parameter Optimization              Live Trading
+Risk Assessment                         Performance Prediction              Profit Tracking
+Volatility Study                        Backtesting Validation             Parameter Loading
+```
+
+### **What Each Tool Produces**
+
+#### **🔬 Momentum Backtest Output:**
+- `ecosystem_data/research_insights.json` - Asset performance rankings (0-10 scores)
+- `ecosystem_data/optimization_history.json` - Historical optimization results
+- **Used by:** Prophet for smart asset suggestions and parameter ranges
+
+#### **🔮 Prophet Output:**
+- `prophet_reco.json` - Optimized parameters for specific assets
+- Contains: Buy thresholds, sell thresholds, take profit levels, expected returns
+- **Used by:** TITAN for automatic parameter loading and performance predictions
+
+#### **🤖 TITAN Integration:**
+- Automatically loads Prophet recommendations when available
+- Shows expected performance vs actual during trading
+- Logs to asset-specific files: `logs/titan_btc.log`, `logs/titan_xrp.log`, etc.
+- Tracks profit performance against ecosystem predictions
 
 ---
 
@@ -72,74 +178,21 @@
 
 ---
 
-## 🚀 Quick Start
+## 🤖 TITAN - Advanced Momentum Trading Bot
 
-### 1. **Setup Environment**
-```bash
-git clone https://github.com/ccc1236/coinsph-trading-bot.git
-cd coinsph-trading-bot
-
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate   # Windows
-# source venv/bin/activate  # Linux/Mac
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. **Configure API Credentials**
-```bash
-cp .env.example .env
-# Edit .env and add your credentials:
-COINS_API_KEY=your_api_key_here
-COINS_SECRET_KEY=your_secret_key_here
-# MARKETRAKER_VERIFICATION_KEY=your_key_here  # Optional for ORACLE
-```
-
-### 3. **Validate Setup**
-```bash
-python test_connection.py
-```
-
-### 4. **Choose Your Bot**
-
-#### **🤖 Start TITAN (Momentum Bot)**
-```bash
-python titan.py
-```
-- Interactive setup wizard with intelligent recommendations
-- Choose from 4 position sizing strategies
-- Configurable take profit levels based on backtesting
-- Asset-specific risk analysis
-
-#### **🔮 Start ORACLE (AI Bot)**
-```bash
-python oracle.py
-```
-- **NEW v5.0**: Choose from 6 advanced position sizing strategies
-- AI signal quality assessment and intelligent sizing
-- Webhook server for AI signals
-- Test mode enabled by default
-- Advanced monitoring dashboard
-
----
-
-## 🤖 TITAN - Advanced Momentum Trading Bot v4.0
-
-### **🎯 NEW in v4.0: Fully Configurable Trading Thresholds**
-TITAN v4.0 introduces revolutionary configurability - no more hardcoded parameters!
+### **🎯 Fully Configurable Trading Thresholds**
+TITAN features revolutionary configurability - no more hardcoded parameters!
 
 #### **🔧 Configurable at Startup:**
-- **Buy Threshold**: 0.5% - 5.0% (no more fixed 0.6%)
-- **Sell Threshold**: 0.8% - 4.0% (no more fixed 1.0%) 
+- **Buy Threshold**: 0.5% - 5.0% (ecosystem-optimized suggestions)
+- **Sell Threshold**: 0.8% - 4.0% (automatically calculated from buy threshold)
 - **Take Profit**: 0.5% - 15.0% with asset-specific recommendations
 - **Position Sizing**: All 4 strategies with smart suggestions
 
 #### **🎯 Optimization-Driven Recommendations:**
 Based on comprehensive backtesting discoveries:
 
-**XRPPHP Optimization Discovery:**
+**Example XRPPHP Optimization:**
 - **Recommended**: 1.2% buy threshold (vs old 0.6%)
 - **Performance**: +1.6% return improvement in backtesting
 - **Take Profit**: 5.0% optimal for this pair
@@ -150,87 +203,52 @@ Based on comprehensive backtesting discoveries:
 - **Medium Volatility** (XRP): Balanced thresholds (1.0%-2.0%)
 - **Low Volatility** (BTC): Higher thresholds (1.5%-2.5%)
 
-### **🎮 Enhanced Interactive Setup Wizard**
-TITAN v4.0 features the most advanced configuration system:
-
-1. **Market Data Analysis**: Real-time volatility assessment
-2. **Parameter Recommendations**: Based on backtesting discoveries
-3. **Performance Predictions**: Expected returns for your configuration
-4. **Optimization Validation**: Live parameter analysis with suggestions
-5. **Asset-Specific Defaults**: Smart suggestions per trading pair
-
-### **🚀 Starting TITAN v4.0**
+### **🚀 Starting TITAN**
 ```bash
 python titan.py
 ```
 
-**Revolutionary Interactive Setup:**
-1. **Asset Selection** with volume analysis and recommendations
+**Interactive Setup Features:**
+1. **Asset Selection** with ecosystem performance rankings
 2. **Threshold Configuration** with optimization-based suggestions
 3. **Parameter Validation** with real-time market analysis
 4. **Performance Prediction** showing expected results
 5. **Smart Defaults** based on backtesting discoveries
 
+### **📊 Risk Management Features**
+- **Configurable Thresholds**: Fully customizable buy/sell triggers (0.5%-5.0%)
+- **Optimization-Based Defaults**: Smart suggestions based on backtesting discoveries
+- **Real-time Parameter Validation**: Market analysis with live optimization suggestions
+- **Asset-Specific Risk Management**: Tailored parameters per trading pair
+- **4 Dynamic Position Sizing Strategies**: From conservative to aggressive
+- **Take Profit**: Fully configurable (0.5% - 15.0%) with asset-specific recommendations
+- **Emergency Exit**: Strong downtrend protection (-5% trend)
+- **Position Limits**: Maximum 10 trades per day
+- **Hold Time**: 30-minute minimum position duration
+
 ---
 
-## 🔮 ORACLE - AI-Enhanced Trading Bot v5.0
+## 🔮 ORACLE - AI-Enhanced Trading Bot
 
-### **🎯 NEW in v5.0: Advanced AI-Specific Position Sizing**
+### **🎯 Advanced AI-Specific Position Sizing**
 Revolutionary position sizing system designed specifically for AI trading signals.
 
 #### **📊 6 Intelligent Position Sizing Strategies:**
 
-1. **🎯 AI Confidence Sizing**
-   - Scale position with AI signal strength
-   - Based on risk level (1-10) and expected change
-   - Best for: Trusting AI signal quality assessment
-
-2. **📊 Volatility Adaptive Sizing**
-   - Adjust position size for market volatility
-   - Smaller positions in volatile markets
-   - Best for: Volatile market conditions
-
-3. **🎪 Signal Quality Matrix Sizing**
-   - Multi-factor signal assessment
-   - Combines AI confidence, risk-reward, price alignment
-   - Best for: Comprehensive signal evaluation
-
-4. **💰 Portfolio Scaling Sizing**
-   - Position size grows with account balance
-   - Percentage-based with quality adjustments
-   - Best for: Growing accounts and compound growth
-
-5. **⚖️ Risk-Reward Optimization**
-   - Size based on AI target/stop ratios
-   - Larger positions on better risk-reward signals
-   - Best for: Risk-conscious trading
-
-6. **🧠 Adaptive AI Sizing (Recommended)**
-   - Advanced multi-factor intelligent sizing
-   - Combines all factors dynamically
-   - Best for: Maximum optimization and performance
+1. **🎯 AI Confidence Sizing** - Scale position with AI signal strength
+2. **📊 Volatility Adaptive Sizing** - Adjust position size for market volatility
+3. **🎪 Signal Quality Matrix Sizing** - Multi-factor signal assessment
+4. **💰 Portfolio Scaling Sizing** - Position size grows with account balance
+5. **⚖️ Risk-Reward Optimization** - Size based on AI target/stop ratios
+6. **🧠 Adaptive AI Sizing (Recommended)** - Advanced multi-factor intelligent sizing
 
 #### **🔬 Signal Quality Assessment System**
-ORACLE v5.0 evaluates every AI signal across multiple dimensions:
-
+ORACLE evaluates every AI signal across multiple dimensions:
 - **AI Confidence**: Based on risk level and expected change
-- **Risk-Reward Ratio**: Target vs stop loss distance  
+- **Risk-Reward Ratio**: Target vs stop loss distance
 - **Market Alignment**: How close current price is to AI entry
 - **Volatility Factor**: Market stability assessment
 - **Overall Quality Score**: Combined 0.0-1.0 rating
-
-#### **💰 Dynamic Position Sizing Range**
-Instead of fixed ₱200, positions now dynamically adjust:
-
-- **Minimum**: ₱50 (very low quality signals)
-- **Typical**: ₱200 (your base amount)  
-- **Maximum**: ₱400 (exceptional high-quality signals)
-
-#### **📈 Enhanced Position Monitoring**
-- Quality-based exit strategies
-- Signal degradation detection
-- Time-based exits for low quality signals
-- Dynamic stop loss and target management
 
 ### **🌐 Webhook Endpoints**
 ```
@@ -238,15 +256,10 @@ http://localhost:8000/                           # Bot status
 http://localhost:8000/health                     # Health check
 http://localhost:8000/status                     # Comprehensive status
 http://localhost:8000/exchange-rate              # USD/PHP rate info
-http://localhost:8000/position-sizing-performance # NEW: Sizing analytics
+http://localhost:8000/position-sizing-performance # Sizing analytics
 ```
 
-### **📡 Signal Processing**
-- **Live Signals**: `/webhook/marketraker` (with signature verification)
-- **Test Signals**: `/webhook/test` (for development)
-- **Toggle Mode**: `/toggle-test-mode` (switch test/live)
-
-### **🚀 Starting ORACLE v5.0**
+### **🚀 Starting ORACLE**
 ```bash
 python oracle.py
 ```
@@ -260,25 +273,25 @@ python oracle.py
 
 ---
 
-## 📊 Strategy Optimization
+## 📈 Strategy Optimization
 
-### **Enhanced Take Profit Optimizer (All PHP Pairs)**
+### **Enhanced Parameter Optimizer (Prophet)**
 ```bash
-python take_profit_optimizer.py
+python prophet.py
 ```
 
-**NEW Features:**
+**Features:**
 - **All PHP Pairs Support**: Test any PHP trading pair (72+ pairs supported)
 - **Asset-Specific Optimization**: Volatility-based parameter ranges
-- **Smart Recommendations**: Based on 24h market data analysis
-- **TITAN Integration**: Results ready for TITAN v4.0 configuration
+- **Smart Recommendations**: Based on ecosystem research insights
+- **TITAN Integration**: Results ready for TITAN configuration
 
-### **Enhanced Momentum Backtester v45 (Multi-Asset)**
+### **Multi-Asset Backtester**
 ```bash
-python momentum_backtest_v45.py
+python momentum_backtest.py
 ```
 
-**NEW Features:**
+**Features:**
 - **Multi-Asset Support**: Test all 72 PHP pairs automatically
 - **TITAN Position Sizing Integration**: Test all 4 strategies
 - **Asset-Specific Parameters**: Volatility-based optimization ranges
@@ -325,50 +338,21 @@ Both bots provide comprehensive logging:
 - **Daily trade counters** and limits
 - **Performance metrics** vs buy & hold
 
-### **TITAN v4.0 Monitoring**
+### **TITAN Monitoring**
 - Console output with 15-minute updates and threshold analysis
-- Asset-specific log files: `logs/titan_v4_xrp.log`, `logs/titan_v4_sol.log`
+- Asset-specific log files: `logs/titan_xrp.log`, `logs/titan_sol.log`
 - **Enhanced logging**: Parameter decisions, optimization suggestions, threshold triggers
 - **Real-time validation**: Market analysis and parameter recommendations
 - **Performance tracking**: Configurable threshold effectiveness analysis
 
-### **ORACLE v5.0 Monitoring**
+### **ORACLE Monitoring**
 - FastAPI dashboard at `http://localhost:8000`
-- **NEW**: Position sizing performance analytics at `/position-sizing-performance`
+- Position sizing performance analytics at `/position-sizing-performance`
 - Webhook processing logs with AI signal analysis
 - Enhanced position monitoring with quality-based decisions
-- Log file: `oracle_v5.log`
+- Log file: `oracle.log`
 - **Real-time sizing decisions**: Detailed logging of position size calculations
 - **Signal quality tracking**: Performance correlation analysis
-
----
-
-## 🛡️ Risk Management
-
-### **TITAN v4.0 Risk Features**
-- **Configurable Thresholds**: Fully customizable buy/sell triggers (0.5%-5.0%)
-- **Optimization-Based Defaults**: Smart suggestions based on backtesting discoveries
-- **Real-time Parameter Validation**: Market analysis with live optimization suggestions
-- **Asset-Specific Risk Management**: Tailored parameters per trading pair
-- **4 Dynamic Position Sizing Strategies**: From conservative to aggressive
-- **Advanced Setup Wizard**: Pre-trading parameter analysis and validation
-- **Take Profit**: Fully configurable (0.5% - 15.0%) with asset-specific recommendations
-- **Emergency Exit**: Strong downtrend protection (-5% trend)
-- **Position Limits**: Maximum 10 trades per day
-- **Hold Time**: 30-minute minimum position duration
-
-### **ORACLE v5.0 Risk Features**
-- **Advanced Position Sizing**: 6 intelligent strategies with dynamic risk adjustment
-- **Signal Quality Filtering**: Multi-dimensional signal assessment before execution
-- **Volatility Protection**: Automatic position size reduction in volatile markets
-- **Risk-Reward Optimization**: Position sizing based on AI target/stop ratios
-- **Portfolio Protection**: Maximum position size limits based on account balance
-- **Quality-Based Exits**: Automatic exit when signal quality degrades
-- **AI Risk Filtering**: Rejects signals with risk > 8/10
-- **Price Validation**: 3% tolerance for AI entry points
-- **Dynamic Bounds**: Position size bounds adjust based on signal quality
-- **Momentum Confirmation**: Dual AI + technical validation
-- **Stop Loss**: AI-calculated stop loss levels with dynamic monitoring
 
 ---
 
@@ -384,7 +368,7 @@ COINS_SECRET_KEY=your_coins_secret_key
 MARKETRAKER_VERIFICATION_KEY=your_verification_key
 ```
 
-### **TITAN v4.0 Configuration**
+### **TITAN Configuration**
 Revolutionary configurability - no code changes needed:
 
 ```python
@@ -400,13 +384,13 @@ min_hold_hours = 0.5       # 30 minutes minimum hold
 max_trades_per_day = 10    # Daily safety limit
 check_interval = 900       # 15 minutes between checks
 
-# NEW: Asset-specific recommendations based on backtesting:
+# Asset-specific recommendations based on backtesting:
 # XRPPHP: 1.2% buy, 2.0% sell, 5.0% TP (optimized)
 # SOLPHP: 0.8% buy, 1.3% sell, 2.0% TP (high volatility)
 # BTCPHP: 1.5% buy, 2.5% sell, 3.0% TP (low volatility)
 ```
 
-### **ORACLE v5.0 Configuration**
+### **ORACLE Configuration**
 ```python
 # Base configuration
 base_amount = 200                    # ₱200 base reference amount
@@ -425,18 +409,13 @@ max_position_multiplier = 2.0        # Maximum 200% of base
 # Signal quality thresholds
 min_signal_quality = 0.3             # Minimum quality to trade
 high_quality_threshold = 0.7         # Threshold for bonus sizing
-
-# AI-enhanced parameters
-momentum_buy_threshold = 0.006       # 0.6% momentum confirmation
-price_tolerance = 3.0                # 3% AI entry tolerance
-max_trades_per_day = 15             # Higher limit for AI signals
 ```
 
 ---
 
 ## 🆚 Bot Comparison
 
-| Feature | 🤖 TITAN v4.0 | 🔮 ORACLE v5.0 |
+| Feature | 🤖 TITAN | 🔮 ORACLE |
 |---------|----------|-----------|
 | **Strategy** | Pure Momentum | AI + Advanced Sizing |
 | **Signals** | Technical Analysis | MarketRaker AI |
@@ -468,8 +447,8 @@ python oracle.py
 ```
 
 **Recommended Usage:**
-- **TITAN v4.0**: Optimized momentum trading with configurable thresholds
-- **ORACLE v5.0**: AI signal trading with intelligent position sizing
+- **TITAN**: Optimized momentum trading with configurable thresholds
+- **ORACLE**: AI signal trading with intelligent position sizing
 - **Both**: Diversified strategy with TITAN handling momentum and ORACLE handling AI signals
 
 ---
@@ -519,7 +498,7 @@ Contributions welcome! Areas for improvement:
 
 ## 📄 License
 
-This project is open source. Use responsibly and at your own risk.
+This project is open source under MIT License. Use responsibly and at your own risk.
 
 ---
 
@@ -538,12 +517,12 @@ This project is open source. Use responsibly and at your own risk.
 - [ ] ✅ **Setup Environment** (Python 3.8+, dependencies)
 - [ ] ✅ **Configure API Keys** (Coins.ph credentials)
 - [ ] ✅ **Validate Connection** (`python test_connection.py`)
-- [ ] ✅ **Choose Your Bot** (TITAN for momentum, ORACLE for AI)
-- [ ] ✅ **Configure TITAN v4.0** (Revolutionary setup wizard with configurable thresholds)
-- [ ] ✅ **Configure ORACLE v5.0** (Advanced position sizing strategy selection)
-- [ ] ✅ **Optimize Parameters** (Use enhanced backtesting tools for your chosen pairs)
-- [ ] ✅ **Start with Recommended Settings** (Use backtesting-proven configurations)
-- [ ] ✅ **Monitor Enhanced Logs** (Check threshold analysis and sizing performance)
-- [ ] ✅ **Track Performance** (Use new analytics endpoints and sizing effectiveness)
+- [ ] ✅ **Choose Your Approach** (Quick start or research-driven)
+- [ ] ✅ **Run Research Analysis** (`python momentum_backtest.py` - optional but recommended)
+- [ ] ✅ **Optimize Parameters** (`python prophet.py` - optional but recommended)
+- [ ] ✅ **Configure TITAN** (Revolutionary setup wizard with ecosystem intelligence)
+- [ ] ✅ **Configure ORACLE** (Advanced position sizing strategy selection - optional)
+- [ ] ✅ **Start Trading** (`python titan.py` or `python oracle.py`)
+- [ ] ✅ **Monitor Performance** (Check logs and real-time analytics)
 
-**Happy Trading with TITAN v4.0 and ORACLE v5.0! 🤖🔮📈**
+**Happy Trading with TITAN and ORACLE! 🤖🔮📈**
