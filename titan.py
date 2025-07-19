@@ -36,7 +36,7 @@ class TitanTradingBot:
         # Bot identity
         self.name = "TITAN"
         self.version = "4.1.0"
-        self.description = "Advanced Momentum Trading Bot"
+        self.description = "Advanced Momentum Trading Bot with Graceful Exit"
         
         # Trading parameters - now fully configurable!
         self.symbol = symbol
@@ -734,7 +734,7 @@ def get_symbol_suggestions():
 def load_prophet_recommendations():
     """Load Prophet's latest optimization results from JSON file"""
     try:
-        recommendations_file = Path('prophet_recommendations.json')
+        recommendations_file = Path('prophet_reco.json')
         
         if not recommendations_file.exists():
             print("📝 No Prophet recommendations found - using fallback defaults")

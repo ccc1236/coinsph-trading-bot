@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import json
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import itertools
@@ -313,7 +314,7 @@ class ProphetSimplified:
         """Show optimal configuration for TITAN bot"""
         if not results:
             print("❌ No results to analyze")
-            return
+            return None, None
         
         # Find best overall strategy
         df = pd.DataFrame(results)
@@ -360,45 +361,57 @@ class ProphetSimplified:
         
         return best_overall, period_results
 
-    def export_results(self, results, best_config):
-        """Optional export of results"""
-        export = input(f"\n💾 Export detailed results to CSV? (y/n): ").lower().startswith('y')
-        
-        if export:
-            # Create logs directory if it doesn't exist
-            logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-            os.makedirs(logs_dir, exist_ok=True)
-            
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            
-            # Export combined results
-            df = pd.DataFrame(results)
-            df_sorted = df.sort_values('return_pct', ascending=False)
-            
-            filename = os.path.join(logs_dir, f"prophet_titan_config_{self.symbol}_{timestamp}.csv")
-            df_sorted.to_csv(filename, index=False)
-            
-            # Export summary
-            summary_data = {
-                'symbol': [self.symbol],
-                'optimal_buy': [best_config['buy_threshold']],
-                'optimal_sell': [best_config['sell_threshold']],
-                'optimal_tp': [best_config['take_profit']],
-                'expected_return': [best_config['return_pct']],
-                'win_rate': [best_config['win_rate']],
-                'tp_rate': [best_config['tp_rate']],
-                'total_trades': [best_config['total_trades']],
-                'analysis_date': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')]
+    def save_recommendations_for_titan(self, best_config, symbol):
+        """Save Prophet's recommendations for TITAN to load"""
+        try:
+            # Prepare recommendation data
+            recommendation = {
+                'buy_threshold': best_config['buy_threshold'],
+                'sell_threshold': best_config['sell_threshold'], 
+                'take_profit': best_config['take_profit'],
+                'position_sizing': 'adaptive',  # Prophet's recommended default
+                'rationale': f"Prophet optimized on {datetime.now().strftime('%Y-%m-%d')}: {best_config['return_pct']:+.1f}% return, {best_config['win_rate']:.1f}% win rate",
+                'expected_performance': f"{best_config['return_pct']:+.1f}% return, {best_config['win_rate']:.1f}% win rate, {best_config['total_trades']} trades",
+                'analysis_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'prophet_version': '2.0',
+                'test_periods': '30-60 days',
+                'optimization_score': best_config['return_pct']
             }
             
-            summary_df = pd.DataFrame(summary_data)
-            summary_filename = os.path.join(logs_dir, f"titan_config_summary_{self.symbol}_{timestamp}.csv")
-            summary_df.to_csv(summary_filename, index=False)
+            # Load existing recommendations file or create new
+            reco_file = 'prophet_reco.json'
+            try:
+                with open(reco_file, 'r') as f:
+                    existing_data = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                existing_data = {
+                    'timestamp': datetime.now().isoformat(),
+                    'prophet_version': '2.0',
+                    'recommendations': {}
+                }
             
-            print(f"✅ Detailed results: logs/{os.path.basename(filename)}")
-            print(f"✅ TITAN summary: logs/{os.path.basename(summary_filename)}")
-        else:
-            print("📊 Results not exported")
+            # Update with new recommendation
+            existing_data['recommendations'][symbol] = recommendation
+            existing_data['last_updated'] = datetime.now().isoformat()
+            existing_data['timestamp'] = datetime.now().isoformat()
+            
+            # Save to file
+            with open(reco_file, 'w') as f:
+                json.dump(existing_data, f, indent=2)
+            
+            print(f"\n💾 PROPHET RECOMMENDATIONS SAVED!")
+            print(f"📁 File: {reco_file}")
+            print(f"🎯 Symbol: {symbol}")
+            print(f"📈 Buy: {best_config['buy_threshold']:.1f}%")
+            print(f"📉 Sell: {best_config['sell_threshold']:.1f}%") 
+            print(f"🎯 TP: {best_config['take_profit']:.1f}%")
+            print(f"⏰ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error saving recommendations: {e}")
+            return False
 
 def get_available_pairs():
     """Get available trading pairs from the exchange"""
@@ -462,9 +475,9 @@ def get_fallback_pairs():
 
 def main():
     try:
-        print("🔮 PROPHET - TITAN Bot Configuration Generator")
-        print("🎯 Finds optimal parameters for your TITAN bot")
-        print("⚡ Simplified output with direct TITAN settings")
+        print("🔮 PROPHET v2.0 - TITAN Bot Configuration Generator")
+        print("🎯 Finds optimal parameters and saves them for TITAN")
+        print("💾 Now saves recommendations to prophet_reco.json")
         print("=" * 55)
         
         if not os.getenv('COINS_API_KEY'):
@@ -543,11 +556,30 @@ def main():
         
         if results:
             best_config, period_results = prophet.show_titan_configuration(results)
-            prophet.export_results(results, best_config)
             
-            print(f"\n🔮 PROPHET's task is complete!")
-            print(f"🤖 Use the configuration above in your TITAN bot")
-            print(f"🚀 May profitable trades be with you!")
+            if best_config is not None:
+                # Save recommendations for TITAN
+                save_success = prophet.save_recommendations_for_titan(best_config, symbol)
+                
+                if save_success:
+                    print(f"\n🎉 PROPHET OPTIMIZATION COMPLETE!")
+                    print(f"💾 Recommendations saved to prophet_reco.json")
+                    print(f"🤖 TITAN will now load these optimized settings for {symbol}")
+                    
+                    print(f"\n📋 NEXT STEPS:")
+                    print("=" * 50)
+                    print("🔮 python prophet.py → ✅ DONE (generated prophet_reco.json)")
+                    print("🤖 python titan.py   → Load Prophet's latest findings")
+                    print("=" * 50)
+                    print(f"✨ When you run TITAN, it will automatically suggest:")
+                    print(f"   📈 Buy: {best_config['buy_threshold']:.1f}%")
+                    print(f"   📉 Sell: {best_config['sell_threshold']:.1f}%")
+                    print(f"   🎯 TP: {best_config['take_profit']:.1f}%")
+                    print(f"   (You can still customize any values in TITAN)")
+                else:
+                    print("❌ Failed to save recommendations")
+            else:
+                print("❌ No optimal configuration found")
         else:
             print("❌ No results generated. Check your data connection.")
             
