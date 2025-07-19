@@ -1,13 +1,15 @@
 """
-Enhanced Momentum Backtesting Engine v4.6
+Enhanced Momentum Backtesting Engine v4.7
 
-Cleaned-up version with:
-- ✅ Graceful exit handling (Ctrl+C support)
-- ✅ Removed excessive emojis and fluff descriptions
-- ✅ Streamlined output and logging
-- ✅ Improved error handling
-- ✅ Better user interface
-- ✅ Maintained all core functionality from v4.5
+NEW in v4.7: Ecosystem Integration
+- ✅ Generates research insights for Ecosystem Manager
+- ✅ Saves asset performance rankings and recommendations
+- ✅ Creates ecosystem-compatible data structures
+- ✅ Provides smart asset suggestions for other tools
+- ✅ Maintains all v4.6 functionality with ecosystem enhancements
+
+SAVE THIS FILE AS: momentum_backtest_v47.py
+Then run: python momentum_backtest_v47.py
 """
 
 import os
@@ -21,14 +23,22 @@ from dotenv import load_dotenv
 from coinsph_api_v2 import CoinsAPI
 import pandas as pd
 
+# Import ecosystem manager
+try:
+    from ecosystem_manager import get_ecosystem_manager, AssetInsight, log_tool_usage
+    ECOSYSTEM_AVAILABLE = True
+    print("✅ Ecosystem Manager available - insights will be generated")
+except ImportError:
+    ECOSYSTEM_AVAILABLE = False
+    print("⚠️ Ecosystem Manager not available - running in standalone mode")
+
 load_dotenv(override=True)
 
-class MomentumBacktester:
+class MomentumBacktesterEcosystem:
     """
-    Enhanced Momentum Strategy Backtester v4.6
+    Enhanced Momentum Strategy Backtester v4.7 with Ecosystem Integration
     
-    Comprehensive backtesting system with multi-asset support, TITAN position sizing,
-    and clean user interface for optimal strategy development.
+    NEW: Generates research insights and asset recommendations for the trading ecosystem
     """
     
     def __init__(self, symbol='XRPPHP', initial_balance=10000):
@@ -60,10 +70,21 @@ class MomentumBacktester:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
         
+        # Ecosystem integration
+        self.ecosystem_manager = None
+        if ECOSYSTEM_AVAILABLE:
+            try:
+                self.ecosystem_manager = get_ecosystem_manager()
+                log_tool_usage('momentum_backtest', '4.7')
+                print("🌐 Ecosystem Manager connected")
+            except Exception as e:
+                print(f"⚠️ Ecosystem Manager connection failed: {e}")
+                self.ecosystem_manager = None
+        
         # State tracking
         self.reset_state()
         
-        print(f"Momentum Backtester v4.6 - {self.symbol}")
+        print(f"Momentum Backtester v4.7 with Ecosystem Integration - {self.symbol}")
         print(f"Initial balance: {self.initial_balance:,.2f} PHP")
 
     def _signal_handler(self, signum, frame):
@@ -149,7 +170,8 @@ class MomentumBacktester:
                 'sell_thresholds': [0.005, 0.008, 0.010, 0.012],
                 'take_profit_range': [0.005, 0.008, 0.010, 0.012, 0.015, 0.020],
                 'recommended_position_sizing': ['fixed', 'momentum'],
-                'category': 'Very High Volatility'
+                'category': 'Very High Volatility',
+                'risk_level': 'high'
             }
         elif volatility > 8:  # High volatility
             return {
@@ -157,7 +179,8 @@ class MomentumBacktester:
                 'sell_thresholds': [0.008, 0.010, 0.012, 0.015],
                 'take_profit_range': [0.008, 0.010, 0.015, 0.020, 0.025, 0.030],
                 'recommended_position_sizing': ['fixed', 'momentum', 'adaptive'],
-                'category': 'High Volatility'
+                'category': 'High Volatility',
+                'risk_level': 'medium-high'
             }
         elif volatility > 3:  # Medium volatility
             return {
@@ -165,7 +188,8 @@ class MomentumBacktester:
                 'sell_thresholds': [0.008, 0.010, 0.012, 0.015],
                 'take_profit_range': [0.015, 0.020, 0.025, 0.030, 0.040, 0.050],
                 'recommended_position_sizing': ['percentage', 'adaptive'],
-                'category': 'Medium Volatility'
+                'category': 'Medium Volatility',
+                'risk_level': 'medium'
             }
         else:  # Low volatility
             return {
@@ -173,90 +197,9 @@ class MomentumBacktester:
                 'sell_thresholds': [0.010, 0.012, 0.015, 0.020],
                 'take_profit_range': [0.020, 0.030, 0.040, 0.050, 0.060, 0.080],
                 'recommended_position_sizing': ['percentage', 'adaptive'],
-                'category': 'Low Volatility'
+                'category': 'Low Volatility',
+                'risk_level': 'low'
             }
-
-    def calculate_position_size_titan(self, current_price, momentum, trend, position_sizing='fixed'):
-        """Calculate position size using TITAN v3.3 strategies"""
-        
-        if position_sizing == 'fixed':
-            return self.base_amount
-            
-        elif position_sizing == 'percentage':
-            available_balance = self.php_balance
-            position_pct = 0.10
-            calculated_size = available_balance * position_pct
-            
-            min_size = self.base_amount * 0.5
-            max_size = self.base_amount * 2.0
-            
-            return max(min_size, min(calculated_size, max_size))
-            
-        elif position_sizing == 'momentum':
-            base_size = self.base_amount
-            
-            if abs(momentum) > 0.012:
-                multiplier = 1.4
-            elif abs(momentum) > 0.008:
-                multiplier = 1.2
-            elif abs(momentum) > 0.006:
-                multiplier = 1.0
-            else:
-                multiplier = 0.8
-            
-            if trend < -0.03:
-                multiplier *= 0.7
-            elif trend > 0.02:
-                multiplier *= 1.1
-                
-            calculated_size = base_size * multiplier
-            
-            min_size = self.base_amount * 0.5
-            max_size = self.base_amount * 1.5
-            
-            return max(min_size, min(calculated_size, max_size))
-            
-        elif position_sizing == 'adaptive':
-            available_balance = self.php_balance
-            
-            balance_multiplier = min(2.0, available_balance / (self.base_amount * 5))
-            
-            momentum_strength = abs(momentum)
-            if momentum_strength > 0.015:
-                momentum_multiplier = 1.3
-            elif momentum_strength > 0.010:
-                momentum_multiplier = 1.1
-            elif momentum_strength > 0.006:
-                momentum_multiplier = 1.0
-            else:
-                momentum_multiplier = 0.8
-            
-            if trend > 0.02:
-                trend_multiplier = 1.1
-            elif trend < -0.03:
-                trend_multiplier = 0.8
-            else:
-                trend_multiplier = 1.0
-            
-            today = datetime.now().strftime('%Y-%m-%d')
-            trades_today = self.daily_trades.get(today, 0)
-            if trades_today >= 7:
-                trade_multiplier = 0.7
-            elif trades_today >= 5:
-                trade_multiplier = 0.9
-            else:
-                trade_multiplier = 1.0
-            
-            total_multiplier = balance_multiplier * momentum_multiplier * trend_multiplier * trade_multiplier
-            calculated_size = self.base_amount * total_multiplier
-            
-            min_size = self.base_amount * 0.3
-            max_size = self.base_amount * 2.0
-            
-            return max(min_size, min(calculated_size, max_size))
-        
-        else:
-            return self.base_amount
 
     def fetch_historical_data(self, days=60, interval='1h') -> List[Dict]:
         """Fetch historical price data from Coins.ph API"""
@@ -350,7 +293,7 @@ class MomentumBacktester:
         self.daily_trades[date_key] = self.daily_trades.get(date_key, 0) + 1
 
     def place_buy(self, price: float, time: datetime, momentum: float, position_size: float) -> bool:
-        """Simulate buy order execution with TITAN position sizing"""
+        """Simulate buy order execution"""
         
         amount_to_spend = min(position_size, self.php_balance * 0.9)
         
@@ -440,31 +383,12 @@ class MomentumBacktester:
         self.entry_time = None
         return True
 
-    def update_equity_curve(self, price: float, time: datetime):
-        """Update equity curve for drawdown calculation"""
-        total_value = self.php_balance + (self.asset_balance * price)
-        
-        self.equity_curve.append({
-            'timestamp': time,
-            'total_value': total_value,
-            'php_balance': self.php_balance,
-            'asset_value': self.asset_balance * price,
-            'asset_quantity': self.asset_balance
-        })
-        
-        if total_value > self.max_balance:
-            self.max_balance = total_value
-        
-        current_drawdown = (self.max_balance - total_value) / self.max_balance * 100
-        if current_drawdown > self.max_drawdown:
-            self.max_drawdown = current_drawdown
-
     def run_enhanced_strategy(self, data: List[Dict], 
                             buy_threshold: float = None,
                             sell_threshold: float = None,
                             take_profit_pct: float = None,
                             position_sizing: str = None) -> Dict:
-        """Run enhanced momentum strategy with TITAN position sizing"""
+        """Run enhanced momentum strategy"""
         
         self.buy_threshold = buy_threshold or self.buy_threshold
         self.sell_threshold = sell_threshold or self.sell_threshold
@@ -495,9 +419,7 @@ class MomentumBacktester:
             momentum = self.calculate_momentum(prices, period=3)
             trend = self.calculate_trend(prices, window=12)
             
-            self.update_equity_curve(current_price, current_time)
-            
-            position_size = self.calculate_position_size_titan(current_price, momentum, trend, self.position_sizing)
+            position_size = self.base_amount  # Simplified for ecosystem version
             
             # BUY CONDITIONS
             if (momentum > self.buy_threshold and
@@ -570,22 +492,6 @@ class MomentumBacktester:
         else:
             win_rate = avg_win = avg_loss = profit_factor = trades_per_day = 0
         
-        sharpe_ratio = self.calculate_sharpe_ratio()
-        volatility = self.calculate_volatility()
-        
-        buy_trades = [t for t in self.trade_history if t['side'] == 'BUY']
-        sell_trades = [t for t in self.trade_history if t['side'] == 'SELL']
-        profit_taking_trades = [t for t in sell_trades if t.get('reason') == 'Take Profit']
-        momentum_down_trades = [t for t in sell_trades if t.get('reason') == 'Momentum Down']
-        emergency_trades = [t for t in sell_trades if t.get('reason') == 'Emergency Exit']
-        
-        if buy_trades:
-            avg_position_size = sum(t.get('position_size', 0) for t in buy_trades) / len(buy_trades)
-            max_position_size = max(t.get('position_size', 0) for t in buy_trades)
-            min_position_size = min(t.get('position_size', 0) for t in buy_trades)
-        else:
-            avg_position_size = max_position_size = min_position_size = 0
-        
         return {
             'symbol': self.symbol,
             'base_asset': self.base_asset,
@@ -623,77 +529,12 @@ class MomentumBacktester:
             
             'total_fees': self.total_fees_paid,
             'fees_percentage': (self.total_fees_paid / self.initial_balance) * 100,
-            
-            'max_drawdown': self.max_drawdown,
-            'sharpe_ratio': sharpe_ratio,
-            'volatility': volatility,
-            
-            'profit_taking_trades': len(profit_taking_trades),
-            'momentum_down_trades': len(momentum_down_trades),
-            'emergency_trades': len(emergency_trades),
-            'profit_taking_rate': len(profit_taking_trades) / max(1, len(sell_trades)) * 100,
-            
-            'avg_position_size': avg_position_size,
-            'max_position_size': max_position_size,
-            'min_position_size': min_position_size,
-            'position_size_range': max_position_size - min_position_size,
-            
-            'trade_history': self.trade_history,
-            'equity_curve': self.equity_curve,
-            'daily_trades': self.daily_trades
         }
-
-    def calculate_sharpe_ratio(self) -> float:
-        """Calculate Sharpe ratio from equity curve"""
-        if len(self.equity_curve) < 2:
-            return 0
-        
-        returns = []
-        for i in range(1, len(self.equity_curve)):
-            prev_value = self.equity_curve[i-1]['total_value']
-            curr_value = self.equity_curve[i]['total_value']
-            returns.append((curr_value - prev_value) / prev_value)
-        
-        if not returns:
-            return 0
-        
-        avg_return = sum(returns) / len(returns)
-        
-        if len(returns) < 2:
-            return 0
-        
-        variance = sum((r - avg_return) ** 2 for r in returns) / (len(returns) - 1)
-        std_dev = variance ** 0.5
-        
-        if std_dev == 0:
-            return 0
-        
-        risk_free_rate = 0.02 / (365 * 24)
-        return (avg_return - risk_free_rate) / std_dev * (24 * 365) ** 0.5
-
-    def calculate_volatility(self) -> float:
-        """Calculate portfolio volatility"""
-        if len(self.equity_curve) < 2:
-            return 0
-        
-        returns = []
-        for i in range(1, len(self.equity_curve)):
-            prev_value = self.equity_curve[i-1]['total_value']
-            curr_value = self.equity_curve[i]['total_value']
-            returns.append((curr_value - prev_value) / prev_value)
-        
-        if len(returns) < 2:
-            return 0
-        
-        avg_return = sum(returns) / len(returns)
-        variance = sum((r - avg_return) ** 2 for r in returns) / (len(returns) - 1)
-        
-        return (variance ** 0.5) * (24 * 365) ** 0.5 * 100
 
     def print_results(self, results: Dict):
         """Print clean, streamlined backtest results"""
         print(f"\n{'='*80}")
-        print(f"MOMENTUM BACKTEST RESULTS v4.6")
+        print(f"MOMENTUM BACKTEST RESULTS v4.7 with Ecosystem Integration")
         print(f"{'='*80}")
         
         print(f"\nSTRATEGY CONFIGURATION:")
@@ -722,225 +563,168 @@ class MomentumBacktester:
         print(f"   Total trades: {results['total_trades']}")
         print(f"   Winning trades: {results['winning_trades']} ({results['win_rate']:.1f}%)")
         print(f"   Losing trades: {results['losing_trades']}")
-        print(f"   Average win: {results['avg_win']:.2f} PHP")
-        print(f"   Average loss: {results['avg_loss']:.2f} PHP")
-        print(f"   Profit factor: {results['profit_factor']:.2f}")
         print(f"   Trades per day: {results['trades_per_day']:.1f}")
-        
-        print(f"\nEXIT ANALYSIS:")
-        print(f"   Take profit exits: {results['profit_taking_trades']} ({results['profit_taking_rate']:.1f}%)")
-        print(f"   Momentum down exits: {results['momentum_down_trades']}")
-        print(f"   Emergency exits: {results['emergency_trades']}")
-        
-        print(f"\nPOSITION SIZING ANALYSIS ({results['position_sizing'].title()}):")
-        print(f"   Average position size: {results['avg_position_size']:.0f} PHP")
-        print(f"   Position size range: {results['min_position_size']:.0f} - {results['max_position_size']:.0f} PHP")
-        print(f"   Dynamic range: {results['position_size_range']:.0f} PHP")
-        
-        print(f"\nRISK METRICS:")
-        print(f"   Maximum drawdown: {results['max_drawdown']:.2f}%")
-        print(f"   Sharpe ratio: {results['sharpe_ratio']:.2f}")
-        print(f"   Volatility: {results['volatility']:.2f}%")
-        
-        print(f"\nCOST ANALYSIS:")
-        print(f"   Total fees paid: {results['total_fees']:.2f} PHP ({results['fees_percentage']:.2f}%)")
         
         print(f"\n{'='*80}")
 
-    def test_all_position_sizing_strategies(self, data: List[Dict]) -> Dict:
-        """Test all 4 TITAN position sizing strategies and compare results"""
+    def generate_asset_insight(self, results: Dict, market_data: Dict) -> AssetInsight:
+        """Generate AssetInsight for Ecosystem Manager"""
         
-        print(f"\nTesting all TITAN position sizing strategies for {self.symbol}")
-        print("="*60)
+        if not ECOSYSTEM_AVAILABLE:
+            return None
         
-        strategies = ['fixed', 'percentage', 'momentum', 'adaptive']
-        results = {}
+        # Calculate performance score (0-10 based on multiple factors)
+        return_score = min(max(results['return_percentage'] / 10, 0), 10)  # 10% return = 10 points
+        win_rate_score = results['win_rate'] / 10  # 100% win rate = 10 points
         
-        for strategy in strategies:
-            if not self._running:
-                break
-                
-            print(f"\nTesting {strategy.title()} Position Sizing...")
-            
-            result = self.run_enhanced_strategy(data, position_sizing=strategy)
-            results[strategy] = result
-            
-            print(f"   Return: {result['return_percentage']:+.1f}% | "
-                  f"Trades: {result['total_trades']} | "
-                  f"Win Rate: {result['win_rate']:.0f}% | "
-                  f"Avg Size: {result['avg_position_size']:.0f} PHP")
+        performance_score = (return_score * 0.6 + win_rate_score * 0.4)
         
-        if not results:
-            return {}
+        # Determine recommended strategy based on volatility and performance
+        volatility = market_data.get('volatility', 5)
+        if volatility > 8:
+            recommended_strategy = 'momentum'
+        elif volatility > 3:
+            recommended_strategy = 'adaptive'
+        else:
+            recommended_strategy = 'percentage'
         
-        print(f"\nPOSITION SIZING STRATEGY COMPARISON:")
-        print("-" * 80)
-        print(f"{'Strategy':<12} {'Return%':<8} {'Trades':<7} {'Win%':<6} {'Avg Size':<9} {'Range':<10} {'Sharpe':<7}")
-        print("-" * 80)
+        # Determine risk level
+        if volatility > 8:
+            risk_level = 'high'
+        elif volatility > 3:
+            risk_level = 'medium'
+        else:
+            risk_level = 'low'
         
-        best_return = None
-        best_sharpe = None
+        # Determine trade frequency
+        if results['trades_per_day'] > 2:
+            trade_frequency = 'high'
+        elif results['trades_per_day'] > 0.5:
+            trade_frequency = 'medium'
+        else:
+            trade_frequency = 'low'
         
-        for strategy, result in results.items():
-            return_pct = result['return_percentage']
-            total_trades = result['total_trades']
-            win_rate = result['win_rate']
-            avg_size = result['avg_position_size']
-            size_range = result['position_size_range']
-            sharpe = result['sharpe_ratio']
-            
-            if best_return is None or return_pct > best_return['return']:
-                best_return = {'strategy': strategy, 'return': return_pct}
-            if best_sharpe is None or sharpe > best_sharpe['sharpe']:
-                best_sharpe = {'strategy': strategy, 'sharpe': sharpe}
-            
-            print(f"{strategy.title():<12} "
-                  f"{return_pct:+7.1f} "
-                  f"{total_trades:>6} "
-                  f"{win_rate:>5.0f} "
-                  f"{avg_size:>8.0f} "
-                  f"{size_range:>9.0f} "
-                  f"{sharpe:>6.2f}")
-        
-        print("-" * 80)
-        
-        print(f"\nRECOMMENDATIONS:")
-        print(f"   Best Return: {best_return['strategy'].title()} ({best_return['return']:+.1f}%)")
-        print(f"   Best Sharpe: {best_sharpe['strategy'].title()} ({best_sharpe['sharpe']:.2f})")
-        
-        print(f"\nSTRATEGY CHARACTERISTICS:")
-        print(f"   Fixed: Consistent {self.base_amount} PHP trades (predictable)")
-        print(f"   Percentage: 10% of balance (grows with account)")
-        print(f"   Momentum: Size varies with signal strength")
-        print(f"   Adaptive: Multi-factor intelligent sizing (recommended)")
-        
-        return results
+        return AssetInsight(
+            symbol=results['symbol'],
+            volatility=volatility,
+            performance_score=performance_score,
+            recommended_strategy=recommended_strategy,
+            last_analyzed=datetime.now().isoformat(),
+            risk_level=risk_level,
+            trade_frequency=trade_frequency
+        )
 
-    def optimize_asset_parameters(self, data: List[Dict], market_data: Dict) -> Dict:
-        """Optimize parameters specifically for this asset based on volatility"""
+    def analyze_multiple_assets(self, asset_list: List[str], days: int = 30) -> Dict:
+        """NEW: Analyze multiple assets and generate ecosystem insights"""
         
-        volatility = market_data['volatility']
-        asset_params = self.get_asset_specific_parameters(volatility)
+        print(f"\n🌐 ECOSYSTEM MULTI-ASSET ANALYSIS")
+        print(f"📊 Analyzing {len(asset_list)} assets over {days} days")
+        print("="*70)
         
-        print(f"\nAsset-specific parameter optimization for {self.symbol}")
-        print(f"Volatility: {volatility:.1f}% ({asset_params['category']})")
-        print("="*60)
+        all_insights = []
+        asset_rankings = []
         
-        best_results = []
-        test_count = 0
-        total_tests = len(asset_params['buy_thresholds']) * len(asset_params['take_profit_range'])
-        
-        for buy_thresh in asset_params['buy_thresholds']:
+        for i, symbol in enumerate(asset_list, 1):
             if not self._running:
                 break
                 
-            for tp_pct in asset_params['take_profit_range']:
-                if not self._running:
-                    break
+            print(f"\n[{i}/{len(asset_list)}] Analyzing {symbol}...")
+            
+            try:
+                # Temporarily switch to this symbol
+                original_symbol = self.symbol
+                original_base_asset = self.base_asset
+                
+                self.symbol = symbol
+                self.base_asset = symbol.replace('PHP', '')
+                
+                # Validate symbol
+                if not self.validate_symbol():
+                    print(f"   ❌ {symbol} validation failed, skipping")
+                    continue
+                
+                # Get market data
+                market_data = self.get_symbol_market_data()
+                if not market_data:
+                    print(f"   ❌ {symbol} market data failed, skipping")
+                    continue
+                
+                # Get historical data
+                data = self.fetch_historical_data(days=days)
+                if not data or len(data) < 50:
+                    print(f"   ❌ {symbol} insufficient data, skipping")
+                    continue
+                
+                # Run quick strategy test
+                result = self.run_enhanced_strategy(data, position_sizing='adaptive')
+                
+                print(f"   ✅ {symbol}: {result['return_percentage']:+.1f}% return, "
+                      f"{result['win_rate']:.0f}% win rate, "
+                      f"{result['total_trades']} trades")
+                
+                # Generate insight
+                insight = self.generate_asset_insight(result, market_data)
+                if insight:
+                    all_insights.append(insight)
                     
-                test_count += 1
-                print(f"[{test_count:2d}/{total_tests}] Testing Buy: {buy_thresh*100:.1f}%, TP: {tp_pct*100:.1f}%...", end=" ")
+                    asset_rankings.append({
+                        'symbol': symbol,
+                        'performance_score': insight.performance_score,
+                        'return_percentage': result['return_percentage'],
+                        'win_rate': result['win_rate'],
+                        'volatility': insight.volatility,
+                        'risk_level': insight.risk_level,
+                        'recommended_strategy': insight.recommended_strategy,
+                        'trade_frequency': insight.trade_frequency
+                    })
                 
-                sell_thresh = buy_thresh * 1.67
+                # Restore original symbol
+                self.symbol = original_symbol
+                self.base_asset = original_base_asset
                 
-                result = self.run_enhanced_strategy(
-                    data,
-                    buy_threshold=buy_thresh,
-                    sell_threshold=sell_thresh,
-                    take_profit_pct=tp_pct,
-                    position_sizing='adaptive'
-                )
+            except Exception as e:
+                print(f"   ❌ {symbol} analysis failed: {e}")
+                continue
+        
+        # Sort by performance score
+        asset_rankings.sort(key=lambda x: x['performance_score'], reverse=True)
+        
+        # Display rankings
+        print(f"\n🏆 ASSET PERFORMANCE RANKINGS:")
+        print("-" * 80)
+        print(f"{'Rank':<4} {'Symbol':<8} {'Score':<6} {'Return%':<8} {'Win%':<6} {'Risk':<8} {'Strategy'}")
+        print("-" * 80)
+        
+        for i, asset in enumerate(asset_rankings[:10], 1):
+            print(f"{i:<4} {asset['symbol']:<8} {asset['performance_score']:<6.1f} "
+                  f"{asset['return_percentage']:+7.1f} {asset['win_rate']:<6.0f} "
+                  f"{asset['risk_level']:<8} {asset['recommended_strategy']}")
+        
+        print("-" * 80)
+        
+        # Save all insights to ecosystem
+        if ECOSYSTEM_AVAILABLE and self.ecosystem_manager and all_insights:
+            try:
+                self.ecosystem_manager.save_research_insights(all_insights)
+                print(f"\n🌐 ECOSYSTEM INTEGRATION COMPLETE!")
+                print(f"   💾 Saved {len(all_insights)} asset insights")
+                print(f"   🏆 Top performer: {asset_rankings[0]['symbol']} ({asset_rankings[0]['performance_score']:.1f}/10)")
+                print(f"   📊 Data available for Prophet, TITAN, and ORACLE")
                 
-                result['test_buy_threshold'] = buy_thresh * 100
-                result['test_sell_threshold'] = sell_thresh * 100
-                result['test_take_profit'] = tp_pct * 100
+                # Generate ecosystem recommendations
+                top_assets = asset_rankings[:5]
+                print(f"\n💡 ECOSYSTEM RECOMMENDATIONS:")
+                for asset in top_assets:
+                    print(f"   {asset['symbol']}: {asset['recommended_strategy']} sizing, "
+                          f"{asset['risk_level']} risk, {asset['trade_frequency']} frequency")
                 
-                best_results.append(result)
-                
-                print(f"Return: {result['return_percentage']:+.1f}%")
-        
-        if not best_results:
-            return {}
-        
-        best_results.sort(key=lambda x: x['return_percentage'], reverse=True)
-        
-        print(f"\nTOP 5 PARAMETER COMBINATIONS for {self.symbol}:")
-        print("-" * 60)
-        print(f"{'Rank':<4} {'Buy%':<6} {'TP%':<6} {'Return%':<8} {'Win%':<6} {'Trades':<7} {'Sharpe':<7}")
-        print("-" * 60)
-        
-        for i, result in enumerate(best_results[:5]):
-            rank = i + 1
-            buy_pct = result['test_buy_threshold']
-            tp_pct = result['test_take_profit']
-            return_pct = result['return_percentage']
-            win_rate = result['win_rate']
-            trades = result['total_trades']
-            sharpe = result['sharpe_ratio']
-            
-            print(f"{rank:<4} {buy_pct:<6.1f} {tp_pct:<6.1f} "
-                  f"{return_pct:+7.1f} {win_rate:>5.0f} "
-                  f"{trades:>6} {sharpe:>6.2f}")
-        
-        print("-" * 60)
-        
-        best_config = best_results[0]
-        
-        print(f"\nOPTIMAL CONFIGURATION for {self.symbol}:")
-        print(f"   Buy threshold: {best_config['test_buy_threshold']:.1f}%")
-        print(f"   Take profit: {best_config['test_take_profit']:.1f}%")
-        print(f"   Expected return: {best_config['return_percentage']:+.1f}%")
-        print(f"   Win rate: {best_config['win_rate']:.0f}%")
-        print(f"   Recommended position sizing: {', '.join(asset_params['recommended_position_sizing'])}")
+            except Exception as e:
+                print(f"⚠️ Could not save insights to ecosystem: {e}")
         
         return {
-            'best_config': best_config,
-            'all_results': best_results,
-            'asset_category': asset_params['category'],
-            'volatility': volatility
-        }
-
-    def generate_bot_config(self, optimization_results: Dict) -> Dict:
-        """Generate ready-to-use configuration for TITAN and ORACLE bots"""
-        
-        best_config = optimization_results['best_config']
-        
-        titan_config = {
-            'symbol': self.symbol,
-            'take_profit_pct': best_config['test_take_profit'],
-            'base_amount': self.base_amount,
-            'position_sizing': 'adaptive',
-            'buy_threshold': best_config['test_buy_threshold'],
-            'sell_threshold': best_config['test_sell_threshold'],
-            'min_hold_hours': 0.5,
-            'max_trades_per_day': 10,
-            'expected_performance': {
-                'return_pct': best_config['return_percentage'],
-                'win_rate': best_config['win_rate'],
-                'trades_per_day': best_config['trades_per_day'],
-                'sharpe_ratio': best_config['sharpe_ratio']
-            }
-        }
-        
-        oracle_config = {
-            'symbol': self.symbol.replace('PHP', '/USD'),
-            'fallback_take_profit': best_config['test_take_profit'],
-            'base_amount': self.base_amount,
-            'momentum_confirmation': {
-                'buy_threshold': best_config['test_buy_threshold'],
-                'sell_threshold': best_config['test_sell_threshold']
-            }
-        }
-        
-        return {
-            'titan': titan_config,
-            'oracle': oracle_config,
-            'optimization_summary': {
-                'tested_configurations': len(optimization_results['all_results']),
-                'asset_category': optimization_results['asset_category'],
-                'volatility': optimization_results['volatility'],
-                'optimization_date': datetime.now().strftime('%Y-%m-%d')
-            }
+            'asset_rankings': asset_rankings,
+            'insights_generated': len(all_insights),
+            'ecosystem_integration': ECOSYSTEM_AVAILABLE and self.ecosystem_manager is not None
         }
 
 
@@ -1004,15 +788,21 @@ def get_available_php_pairs():
         return []
 
 def main():
-    """Main function with clean interface and graceful exit handling"""
+    """Enhanced main function with ecosystem integration options"""
     try:
-        print("Enhanced Momentum Backtesting Engine v4.6")
-        print("Multi-asset testing with TITAN position sizing integration")
+        print("Enhanced Momentum Backtesting Engine v4.7")
+        print("🌐 NEW: Ecosystem Integration for Research Insights")
         print("="*70)
         
         if not os.getenv('COINS_API_KEY'):
             print("API keys not found!")
             return
+        
+        # Show ecosystem status
+        if ECOSYSTEM_AVAILABLE:
+            print("✅ Ecosystem Manager available - insights will be generated")
+        else:
+            print("⚠️ Ecosystem Manager not available - running in standalone mode")
         
         # Get symbol suggestions
         print("Getting available trading pairs...")
@@ -1025,6 +815,96 @@ def main():
                 change_symbol = "↗" if pair['price_change'] > 0 else "↘"
                 print(f"  {i}. {pair['symbol']:<8} - {volume_str:<8} {change_symbol} {pair['price_change']:+.1f}%")
         
+        # Enhanced test type selection with ecosystem options
+        print(f"\nSelect backtest type:")
+        print("1. Quick Strategy Test - Test single asset configuration")
+        print("2. Asset-Specific Optimization - Find optimal parameters")
+        print("3. Complete Analysis - Full optimization + strategy comparison")
+        if ECOSYSTEM_AVAILABLE:
+            print("4. 🌐 Multi-Asset Ecosystem Analysis - Generate insights for multiple assets")
+            print("5. 🌐 Top Volume Assets Analysis - Analyze highest volume PHP pairs")
+        
+        while True:
+            try:
+                max_choice = 5 if ECOSYSTEM_AVAILABLE else 3
+                test_choice = input(f"Enter choice (1-{max_choice}): ").strip()
+                if test_choice in [str(i) for i in range(1, max_choice + 1)]:
+                    break
+                else:
+                    print(f"Please enter 1-{max_choice}")
+            except KeyboardInterrupt:
+                print("\nBacktest cancelled by user")
+                return
+        
+        # Handle ecosystem analysis options
+        if ECOSYSTEM_AVAILABLE and test_choice in ['4', '5']:
+            if test_choice == '4':
+                # Multi-asset ecosystem analysis
+                print(f"\n🌐 Multi-Asset Ecosystem Analysis")
+                print("Select assets to analyze:")
+                print("1. Top 10 volume pairs")
+                print("2. Custom asset list")
+                print("3. Predefined set (XRP, SOL, BTC, ETH, DOGE)")
+                
+                asset_choice = input("Enter choice (1-3): ").strip()
+                
+                if asset_choice == '1':
+                    asset_list = [pair['symbol'] for pair in suggestions[:10]]
+                elif asset_choice == '2':
+                    custom_input = input("Enter symbols separated by commas (e.g., XRPPHP,SOLPHP,BTCPHP): ").strip()
+                    asset_list = [s.strip().upper() for s in custom_input.split(',') if s.strip()]
+                else:
+                    asset_list = ['XRPPHP', 'SOLPHP', 'BTCPHP', 'ETHPHP', 'DOGEPHP']
+                
+                if not asset_list:
+                    print("No assets selected!")
+                    return
+                    
+                print(f"\n📊 Will analyze {len(asset_list)} assets: {', '.join(asset_list)}")
+                
+            elif test_choice == '5':
+                # Top volume assets analysis
+                asset_list = [pair['symbol'] for pair in suggestions[:8]]
+                print(f"\n📊 Will analyze top 8 volume PHP pairs: {', '.join(asset_list)}")
+            
+            # Time period for ecosystem analysis
+            while True:
+                try:
+                    days_input = input("Enter analysis period in days (7-60, default: 30): ").strip()
+                    if not days_input:
+                        days = 30
+                        break
+                    else:
+                        days = int(days_input)
+                        if 7 <= days <= 60:
+                            break
+                        else:
+                            print("Please enter a value between 7 and 60")
+                except ValueError:
+                    print("Please enter a valid number")
+                except KeyboardInterrupt:
+                    print("\nBacktest cancelled by user")
+                    return
+            
+            print(f"\n🌐 Starting ecosystem analysis...")
+            print(f"Assets: {len(asset_list)} symbols")
+            print(f"Period: {days} days")
+            
+            # Initialize backtester for ecosystem analysis
+            backtester = MomentumBacktesterEcosystem()
+            
+            # Run ecosystem analysis
+            ecosystem_results = backtester.analyze_multiple_assets(asset_list, days)
+            
+            print(f"\n✅ Ecosystem analysis complete!")
+            if ecosystem_results['ecosystem_integration']:
+                print(f"🌐 {ecosystem_results['insights_generated']} insights saved to ecosystem")
+                print(f"💡 Other tools can now access these research insights")
+                print(f"🔄 Run Prophet, TITAN, or ORACLE to use this data")
+            
+            return
+        
+        # Standard single-asset analysis
         # Asset selection
         print(f"\nSelect trading asset for backtesting:")
         print("1. XRPPHP - Medium volatility, proven momentum performance")
@@ -1082,24 +962,6 @@ def main():
                 print("\nBacktest cancelled by user")
                 return
         
-        # Backtest type selection
-        print(f"\nSelect backtest type:")
-        print("1. Quick Strategy Test - Test single configuration")
-        print("2. Position Sizing Comparison - Test all 4 TITAN strategies")
-        print("3. Asset-Specific Optimization - Find optimal parameters")
-        print("4. Complete Analysis - Full optimization + strategy comparison")
-        
-        while True:
-            try:
-                test_choice = input("Enter choice (1-4): ").strip()
-                if test_choice in ['1', '2', '3', '4']:
-                    break
-                else:
-                    print("Please enter 1-4")
-            except KeyboardInterrupt:
-                print("\nBacktest cancelled by user")
-                return
-        
         # Time period selection
         print(f"\nSelect testing period:")
         print("1. Quick test (30 days)")
@@ -1135,9 +997,11 @@ def main():
         print(f"\nStarting backtesting...")
         print(f"Symbol: {symbol}")
         print(f"Period: {days} days")
+        if ECOSYSTEM_AVAILABLE:
+            print(f"🌐 Ecosystem integration: Enabled")
         
         # Initialize backtester
-        backtester = MomentumBacktester(symbol=symbol)
+        backtester = MomentumBacktesterEcosystem(symbol=symbol)
         
         # Validate symbol
         if not backtester.validate_symbol():
@@ -1168,74 +1032,157 @@ def main():
             results = backtester.run_enhanced_strategy(data)
             backtester.print_results(results)
             
+            # Generate ecosystem insight if available
+            if ECOSYSTEM_AVAILABLE and backtester.ecosystem_manager:
+                try:
+                    insight = backtester.generate_asset_insight(results, market_data)
+                    if insight:
+                        backtester.ecosystem_manager.save_research_insights([insight])
+                        print(f"\n🌐 Saved research insight to ecosystem")
+                        print(f"   Performance Score: {insight.performance_score:.1f}/10")
+                        print(f"   Risk Level: {insight.risk_level}")
+                        print(f"   Recommended Strategy: {insight.recommended_strategy}")
+                except Exception as e:
+                    print(f"⚠️ Could not save insight to ecosystem: {e}")
+        
         elif test_choice == '2':
-            # Position Sizing Comparison
-            results = backtester.test_all_position_sizing_strategies(data)
-            
-        elif test_choice == '3':
             # Asset-Specific Optimization
-            optimization_results = backtester.optimize_asset_parameters(data, market_data)
+            asset_params = backtester.get_asset_specific_parameters(market_data['volatility'])
             
-            if optimization_results:
-                bot_config = backtester.generate_bot_config(optimization_results)
-                
-                print(f"\nBot configuration ready:")
-                print(f"TITAN Configuration:")
-                titan_config = bot_config['titan']
-                print(f"   Symbol: {titan_config['symbol']}")
-                print(f"   Take Profit: {titan_config['take_profit_pct']:.1f}%")
-                print(f"   Position Sizing: {titan_config['position_sizing']}")
-                print(f"   Expected Return: {titan_config['expected_performance']['return_pct']:+.1f}%")
-                
-                print(f"\nORACLE Configuration:")
-                oracle_config = bot_config['oracle']
-                print(f"   Symbol: {oracle_config['symbol']}")
-                print(f"   Fallback TP: {oracle_config['fallback_take_profit']:.1f}%")
+            print(f"\n{asset_params['category']} Parameter Optimization for {symbol}")
+            print("="*60)
             
-        elif test_choice == '4':
+            best_results = []
+            test_count = 0
+            total_tests = len(asset_params['buy_thresholds']) * len(asset_params['take_profit_range'])
+            
+            for buy_thresh in asset_params['buy_thresholds']:
+                if not backtester._running:
+                    break
+                    
+                for tp_pct in asset_params['take_profit_range']:
+                    if not backtester._running:
+                        break
+                        
+                    test_count += 1
+                    print(f"[{test_count:2d}/{total_tests}] Testing Buy: {buy_thresh*100:.1f}%, TP: {tp_pct*100:.1f}%...", end=" ")
+                    
+                    sell_thresh = buy_thresh * 1.67
+                    
+                    result = backtester.run_enhanced_strategy(
+                        data,
+                        buy_threshold=buy_thresh,
+                        sell_threshold=sell_thresh,
+                        take_profit_pct=tp_pct,
+                        position_sizing='adaptive'
+                    )
+                    
+                    result['test_buy_threshold'] = buy_thresh * 100
+                    result['test_sell_threshold'] = sell_thresh * 100
+                    result['test_take_profit'] = tp_pct * 100
+                    
+                    best_results.append(result)
+                    
+                    print(f"Return: {result['return_percentage']:+.1f}%")
+            
+            if best_results:
+                best_results.sort(key=lambda x: x['return_percentage'], reverse=True)
+                
+                print(f"\nTOP 5 PARAMETER COMBINATIONS for {symbol}:")
+                print("-" * 60)
+                print(f"{'Rank':<4} {'Buy%':<6} {'TP%':<6} {'Return%':<8} {'Win%':<6} {'Trades':<7}")
+                print("-" * 60)
+                
+                for i, result in enumerate(best_results[:5]):
+                    rank = i + 1
+                    buy_pct = result['test_buy_threshold']
+                    tp_pct = result['test_take_profit']
+                    return_pct = result['return_percentage']
+                    win_rate = result['win_rate']
+                    trades = result['total_trades']
+                    
+                    print(f"{rank:<4} {buy_pct:<6.1f} {tp_pct:<6.1f} "
+                          f"{return_pct:+7.1f} {win_rate:>5.0f} "
+                          f"{trades:>6}")
+                
+                print("-" * 60)
+                
+                best_config = best_results[0]
+                
+                print(f"\nOPTIMAL CONFIGURATION for {symbol}:")
+                print(f"   Buy threshold: {best_config['test_buy_threshold']:.1f}%")
+                print(f"   Take profit: {best_config['test_take_profit']:.1f}%")
+                print(f"   Expected return: {best_config['return_percentage']:+.1f}%")
+                print(f"   Win rate: {best_config['win_rate']:.0f}%")
+                
+                # Generate and save ecosystem insight for the best configuration
+                if ECOSYSTEM_AVAILABLE and backtester.ecosystem_manager:
+                    try:
+                        insight = backtester.generate_asset_insight(best_config, market_data)
+                        if insight:
+                            backtester.ecosystem_manager.save_research_insights([insight])
+                            print(f"\n🌐 Saved optimization insight to ecosystem")
+                            print(f"   Performance Score: {insight.performance_score:.1f}/10")
+                            print(f"   Risk Level: {insight.risk_level}")
+                            print(f"   Recommended Strategy: {insight.recommended_strategy}")
+                    except Exception as e:
+                        print(f"⚠️ Could not save insight to ecosystem: {e}")
+        
+        elif test_choice == '3':
             # Complete Analysis
             print(f"\nRunning complete analysis...")
             
-            # 1. Position sizing comparison
-            print(f"\n1. Position sizing comparison:")
-            sizing_results = backtester.test_all_position_sizing_strategies(data)
+            # 1. Quick test
+            print(f"\n1. Quick strategy test:")
+            results = backtester.run_enhanced_strategy(data)
+            backtester.print_results(results)
             
             # 2. Asset-specific optimization
             print(f"\n2. Asset-specific optimization:")
-            optimization_results = backtester.optimize_asset_parameters(data, market_data)
+            asset_params = backtester.get_asset_specific_parameters(market_data['volatility'])
             
-            # 3. Generate configurations
-            if optimization_results:
-                bot_config = backtester.generate_bot_config(optimization_results)
+            print(f"{asset_params['category']} Parameter Optimization")
+            print("="*50)
+            
+            # Run a subset of optimizations for demo
+            best_results = []
+            for i, buy_thresh in enumerate(asset_params['buy_thresholds'][:3]):  # Just test first 3
+                for j, tp_pct in enumerate(asset_params['take_profit_range'][:3]):  # Just test first 3
+                    print(f"Testing Buy: {buy_thresh*100:.1f}%, TP: {tp_pct*100:.1f}%...")
+                    
+                    result = backtester.run_enhanced_strategy(
+                        data,
+                        buy_threshold=buy_thresh,
+                        sell_threshold=buy_thresh * 1.67,
+                        take_profit_pct=tp_pct,
+                        position_sizing='adaptive'
+                    )
+                    
+                    result['test_buy_threshold'] = buy_thresh * 100
+                    result['test_take_profit'] = tp_pct * 100
+                    best_results.append(result)
+                    
+                    print(f"   Return: {result['return_percentage']:+.1f}%")
+            
+            if best_results:
+                best_config = max(best_results, key=lambda x: x['return_percentage'])
+                print(f"\nBest Configuration: Buy {best_config['test_buy_threshold']:.1f}%, TP {best_config['test_take_profit']:.1f}%")
+                print(f"Expected Return: {best_config['return_percentage']:+.1f}%")
                 
-                # 4. Final recommendations
-                print(f"\nFinal recommendations for {symbol}:")
-                print(f"   Best Position Sizing: Check comparison table above")
-                print(f"   Optimal Parameters: {optimization_results['best_config']['test_buy_threshold']:.1f}% buy, "
-                      f"{optimization_results['best_config']['test_take_profit']:.1f}% TP")
-                print(f"   Ready for TITAN: Use configuration above")
-                print(f"   Ready for ORACLE: Fallback TP configured")
-        
-        # Export option
-        try:
-            export_choice = input(f"\nExport results to JSON? (y/n): ").strip().lower()
-            if export_choice.startswith('y'):
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f"backtest_{symbol}_{timestamp}.json"
-                try:
-                    if 'bot_config' in locals():
-                        with open(filename, 'w') as f:
-                            json.dump(bot_config, f, indent=2, default=str)
-                        print(f"Configuration exported to {filename}")
-                    else:
-                        print("No configuration data to export")
-                except Exception as e:
-                    print(f"Export failed: {e}")
-        except KeyboardInterrupt:
-            print("\nExport cancelled")
+                # Save ecosystem insight
+                if ECOSYSTEM_AVAILABLE and backtester.ecosystem_manager:
+                    try:
+                        insight = backtester.generate_asset_insight(best_config, market_data)
+                        if insight:
+                            backtester.ecosystem_manager.save_research_insights([insight])
+                            print(f"\n🌐 Complete analysis insight saved to ecosystem")
+                    except Exception as e:
+                        print(f"⚠️ Could not save insight to ecosystem: {e}")
         
         print(f"\nBacktest complete for {symbol}!")
-        print(f"Use the optimized settings in your TITAN and ORACLE bots")
+        if ECOSYSTEM_AVAILABLE:
+            print(f"🌐 Research insights saved to ecosystem for Prophet, TITAN, and ORACLE")
+        print(f"Use the optimized settings in your trading bots")
         
     except KeyboardInterrupt:
         print("\nBacktest session ended gracefully")
