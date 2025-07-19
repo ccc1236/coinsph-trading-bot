@@ -25,7 +25,20 @@ except ImportError:
 
 load_dotenv(override=True)
 
-class ProphetSimplified:
+class ProphetEnhanced:
+    """
+    🔮 PROPHET v3.0 - Enhanced Comprehensive Parameter Optimizer
+    
+    NEW in v3.0:
+    - ✅ Asset-specific parameter ranges based on volatility analysis
+    - ✅ Real-time market data validation and symbol verification
+    - ✅ Professional results presentation with detailed analysis
+    - ✅ Interactive parameter override capability
+    - ✅ Enhanced symbol support with market data integration
+    - ✅ Maintains TITAN integration (prophet_reco.json output)
+    - ✅ Proven 30 & 60-day test periods (API-friendly)
+    """
+    
     def __init__(self, symbol='SOLPHP'):
         self.api = CoinsAPI(
             api_key=os.getenv('COINS_API_KEY'),
@@ -33,9 +46,10 @@ class ProphetSimplified:
         )
         
         self.symbol = symbol
+        self.base_asset = symbol.replace('PHP', '')
         self.initial_balance = 2000
         
-        # Fixed parameters
+        # Fixed parameters (core strategy)
         self.trade_amount = 200
         self.sell_percentage = 1.00  # 100% clean exits
         self.min_hold_minutes = 30
@@ -45,17 +59,182 @@ class ProphetSimplified:
         self.maker_fee = 0.0025  # 0.25%
         self.taker_fee = 0.0030  # 0.30%
         
-        # Test ranges for parameters
-        self.buy_thresholds = [0.004, 0.006, 0.008, 0.010, 0.012, 0.015, 0.020]  # 0.4% to 2.0%
-        self.sell_thresholds = [0.005, 0.008, 0.010, 0.012, 0.015, 0.020, 0.025]  # 0.5% to 2.5%
+        # Will be set after market analysis
+        self.buy_thresholds = []
+        self.sell_thresholds = []
+        self.take_profit_levels = []
+        self.market_data = None
         
-        # Test ranges for take profit
-        self.take_profit_levels = [0.015, 0.020, 0.025, 0.030, 0.035, 0.040, 0.050, 0.060, 0.080, 0.100]  # 1.5% to 10%
+        print(f"🔮 PROPHET v3.0 - Enhanced Parameter Optimizer")
+        print(f"🎯 Asset: {self.symbol}")
+        print(f"📊 Comprehensive optimization with market-based parameter ranges")
+        print("=" * 70)
+
+    def validate_symbol(self):
+        """Validate that the symbol exists and is tradable (from TPO)"""
+        try:
+            symbol_info = self.api.get_symbol_info(self.symbol)
+            if not symbol_info:
+                print(f"❌ Symbol {self.symbol} not found!")
+                return False
+            
+            status = symbol_info.get('status', '').upper()
+            if status not in ['TRADING', 'ACTIVE']:
+                print(f"❌ Symbol {self.symbol} is not currently tradable (status: {symbol_info.get('status')})")
+                return False
+            
+            print(f"✅ Symbol {self.symbol} validated successfully")
+            print(f"   Base Asset: {symbol_info.get('baseAsset')}")
+            print(f"   Quote Asset: {symbol_info.get('quoteAsset')}")
+            print(f"   Status: {symbol_info.get('status')}")
+            
+            # Check minimum order requirements
+            filters = symbol_info.get('filters', [])
+            for f in filters:
+                if f.get('filterType') == 'MIN_NOTIONAL':
+                    min_notional = float(f.get('minNotional', 0))
+                    if min_notional > 0:
+                        print(f"   Min order size: ₱{min_notional}")
+                        if self.trade_amount < min_notional:
+                            print(f"⚠️ Trade amount (₱{self.trade_amount}) below minimum (₱{min_notional})")
+                            print(f"   Consider increasing trade amount to at least ₱{min_notional + 1}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error validating symbol {self.symbol}: {e}")
+            return False
+
+    def get_market_data_analysis(self):
+        """Get comprehensive market data analysis (from TPO)"""
+        try:
+            # Get current price and 24hr ticker
+            current_price = self.api.get_current_price(self.symbol)
+            ticker_24hr = self.api.get_24hr_ticker(self.symbol)
+            
+            high_24h = float(ticker_24hr.get('highPrice', current_price))
+            low_24h = float(ticker_24hr.get('lowPrice', current_price))
+            volume_24h = float(ticker_24hr.get('quoteVolume', 0))
+            price_change_24h = float(ticker_24hr.get('priceChangePercent', 0))
+            
+            print(f"📊 {self.symbol} Market Analysis:")
+            print(f"   Current Price: ₱{current_price:.4f}")
+            print(f"   24h High: ₱{high_24h:.4f}")
+            print(f"   24h Low: ₱{low_24h:.4f}")
+            print(f"   24h Volume: ₱{volume_24h:,.0f}")
+            print(f"   24h Change: {price_change_24h:+.2f}%")
+            
+            # Calculate volatility
+            volatility = abs(price_change_24h)
+            if volatility > 10:
+                print(f"📈 High volatility asset ({volatility:.1f}%) - Using aggressive parameter ranges")
+            elif volatility > 5:
+                print(f"📊 Moderate volatility asset ({volatility:.1f}%) - Using balanced parameter ranges")
+            else:
+                print(f"📉 Low volatility asset ({volatility:.1f}%) - Using conservative parameter ranges")
+            
+            return {
+                'current_price': current_price,
+                'high_24h': high_24h,
+                'low_24h': low_24h,
+                'volume_24h': volume_24h,
+                'volatility': volatility,
+                'price_change_24h': price_change_24h
+            }
+            
+        except Exception as e:
+            print(f"❌ Error getting market data for {self.symbol}: {e}")
+            return None
+
+    def get_asset_specific_parameters(self, volatility, allow_override=True):
+        """Get asset-specific parameter ranges based on volatility (enhanced from TPO)"""
         
-        print(f"🔮 PROPHET - Optimizing for TITAN Bot")
-        print(f"🎯 Asset: {symbol}")
-        print(f"📊 Finding optimal parameters for TITAN configuration")
-        print("=" * 60)
+        if volatility > 15:  # Very high volatility
+            default_buy = [0.003, 0.004, 0.005, 0.006, 0.008]
+            default_sell = [0.005, 0.008, 0.010, 0.012, 0.015]
+            default_tp = [0.005, 0.008, 0.010, 0.012, 0.015, 0.020]
+            category = 'Very High Volatility'
+        elif volatility > 8:  # High volatility
+            default_buy = [0.004, 0.006, 0.008, 0.010, 0.012]
+            default_sell = [0.008, 0.010, 0.012, 0.015, 0.020]
+            default_tp = [0.008, 0.010, 0.015, 0.020, 0.025, 0.030]
+            category = 'High Volatility'
+        elif volatility > 3:  # Medium volatility
+            default_buy = [0.005, 0.006, 0.008, 0.010, 0.012]
+            default_sell = [0.008, 0.010, 0.012, 0.015, 0.020]
+            default_tp = [0.015, 0.020, 0.025, 0.030, 0.040, 0.050]
+            category = 'Medium Volatility'
+        else:  # Low volatility
+            default_buy = [0.006, 0.008, 0.010, 0.012, 0.015]
+            default_sell = [0.010, 0.012, 0.015, 0.020, 0.025]
+            default_tp = [0.020, 0.030, 0.040, 0.050, 0.060, 0.080]
+            category = 'Low Volatility'
+
+        print(f"\n🎯 {category} Parameter Ranges for {self.base_asset}:")
+        print(f"   Buy Thresholds: {[f'{x*100:.1f}%' for x in default_buy]}")
+        print(f"   Take Profit: {[f'{x*100:.1f}%' for x in default_tp]}")
+        
+        if not allow_override:
+            return {
+                'buy_thresholds': default_buy,
+                'sell_thresholds': default_sell,
+                'take_profit_range': default_tp,
+                'category': category
+            }
+        
+        # Interactive parameter override capability
+        print(f"\n🔧 Parameter Configuration:")
+        print(f"1. Use optimized defaults for {category}")
+        print(f"2. Customize parameter ranges")
+        
+        try:
+            choice = input("Enter choice (1-2, default: 1): ").strip()
+            
+            if choice == '2':
+                print(f"\n📈 Customize Buy Thresholds:")
+                print(f"   Current: {[f'{x*100:.1f}%' for x in default_buy]}")
+                custom_buy_input = input("Enter buy thresholds % (comma-separated, or press Enter for default): ").strip()
+                
+                if custom_buy_input:
+                    try:
+                        custom_buy = [float(x.strip())/100 for x in custom_buy_input.split(',')]
+                        if all(0.001 <= x <= 0.05 for x in custom_buy):
+                            default_buy = sorted(custom_buy)
+                            print(f"✅ Using custom buy thresholds: {[f'{x*100:.1f}%' for x in default_buy]}")
+                        else:
+                            print("⚠️ Invalid ranges, using defaults")
+                    except:
+                        print("⚠️ Invalid format, using defaults")
+                
+                print(f"\n🎯 Customize Take Profit Levels:")
+                print(f"   Current: {[f'{x*100:.1f}%' for x in default_tp]}")
+                custom_tp_input = input("Enter take profit levels % (comma-separated, or press Enter for default): ").strip()
+                
+                if custom_tp_input:
+                    try:
+                        custom_tp = [float(x.strip())/100 for x in custom_tp_input.split(',')]
+                        if all(0.005 <= x <= 0.15 for x in custom_tp):
+                            default_tp = sorted(custom_tp)
+                            print(f"✅ Using custom take profit levels: {[f'{x*100:.1f}%' for x in default_tp]}")
+                        else:
+                            print("⚠️ Invalid ranges, using defaults")
+                    except:
+                        print("⚠️ Invalid format, using defaults")
+                        
+                print(f"✅ Configuration complete!")
+            
+        except KeyboardInterrupt:
+            print(f"\n⚠️ Using default parameters for {category}")
+        
+        # Auto-calculate sell thresholds based on buy thresholds
+        default_sell = [x * 1.67 for x in default_buy]  # 1.67x buy threshold
+        
+        return {
+            'buy_thresholds': default_buy,
+            'sell_thresholds': default_sell,
+            'take_profit_range': default_tp,
+            'category': category
+        }
 
     def reset_state(self):
         """Reset trading state for each test"""
@@ -70,7 +249,11 @@ class ProphetSimplified:
         self.total_fees_paid = 0
 
     def get_historical_data(self, days=60):
-        """Get historical data"""
+        """Get historical data - cached for efficiency"""
+        cache_key = f'_cached_data_{self.symbol}_{days}'
+        if hasattr(self, cache_key):
+            return getattr(self, cache_key)
+        
         try:
             klines = self.api._make_request(
                 'GET', 
@@ -91,7 +274,9 @@ class ProphetSimplified:
             
             if data:
                 actual_days = (data[-1]['timestamp'] - data[0]['timestamp']).days
-                return data, actual_days
+                cached_data = (data, actual_days)
+                setattr(self, cache_key, cached_data)
+                return cached_data
             else:
                 return None, 0
             
@@ -147,7 +332,7 @@ class ProphetSimplified:
                 'quantity': asset_quantity,
                 'fee': fee,
                 'price_change': change,
-                'reason': 'Momentum Buy'
+                'reason': 'Clean Entry'
             })
             
             return True
@@ -157,10 +342,6 @@ class ProphetSimplified:
     def place_sell(self, price, time, change, reason):
         """Place sell order"""
         asset_to_sell = self.asset_balance * self.sell_percentage
-        
-        if asset_to_sell < 0.000001:
-            return False
-        
         gross_amount = asset_to_sell * price
         fee = gross_amount * self.taker_fee
         net_amount = gross_amount - fee
@@ -242,7 +423,7 @@ class ProphetSimplified:
             
             last_price = current_price
         
-        # Calculate results
+        # Calculate comprehensive results
         final_price = data[-1]['close']
         final_portfolio_value = self.calculate_portfolio_value(final_price)
         total_return = final_portfolio_value - self.initial_balance
@@ -269,11 +450,11 @@ class ProphetSimplified:
         }
 
     def find_optimal_parameters(self, days_list=[30, 60]):
-        """Find optimal parameters across multiple periods"""
-        print(f"🔮 PROPHET is analyzing {self.symbol}...")
-        print(f"📊 Testing {len(self.take_profit_levels)} TP × {len(self.buy_thresholds)} buy × {len(self.sell_thresholds)} sell")
-        print(f"⏰ Across {days_list} day periods")
-        print("-" * 60)
+        """Find optimal parameters with enhanced analysis"""
+        print(f"\n🔮 PROPHET v3.0 Enhanced Analysis for {self.symbol}")
+        print(f"📊 Market-Based Optimization with {len(self.take_profit_levels)} TP × {len(self.buy_thresholds)} buy × {len(self.sell_thresholds)} sell")
+        print(f"⏰ Testing across {days_list} day periods")
+        print("-" * 70)
         
         all_results = []
         
@@ -296,7 +477,7 @@ class ProphetSimplified:
                     for sell in self.sell_thresholds:
                         current_test += 1
                         
-                        if current_test % 50 == 0:
+                        if current_test % 20 == 0:
                             print(f"   Progress: {current_test}/{total_tests}")
                         
                         result = self.test_strategy(buy, sell, tp, data)
@@ -310,15 +491,19 @@ class ProphetSimplified:
         
         return all_results
 
-    def show_titan_configuration(self, results):
-        """Show optimal configuration for TITAN bot"""
+    def display_enhanced_results(self, results):
+        """Enhanced results presentation (from TPO)"""
         if not results:
             print("❌ No results to analyze")
             return None, None
         
-        # Find best overall strategy
+        # Convert to DataFrame for analysis
         df = pd.DataFrame(results)
+        
+        # Find optimal strategies
         best_overall = df.loc[df['return_pct'].idxmax()]
+        best_win_rate = df.loc[df['win_rate'].idxmax()]
+        most_profit_taking = df.loc[df['tp_rate'].idxmax()]
         
         # Find best per period
         period_results = {}
@@ -327,37 +512,91 @@ class ProphetSimplified:
             best_period = period_df.loc[period_df['return_pct'].idxmax()]
             period_results[period] = best_period
         
-        print(f"\n🎯 PROPHET'S TITAN BOT CONFIGURATION")
-        print("=" * 60)
+        print(f"\n🏆 PROPHET v3.0 ENHANCED OPTIMIZATION RESULTS")
+        print("=" * 80)
+        
+        # Market context (enhanced from TPO)
+        if self.market_data:
+            print(f"📊 MARKET CONTEXT for {self.symbol}:")
+            print(f"   Current Price: ₱{self.market_data['current_price']:.4f}")
+            print(f"   24h Volume: ₱{self.market_data['volume_24h']:,.0f}")
+            print(f"   24h Volatility: {self.market_data['volatility']:.1f}%")
+            print()
+        
+        # Performance leaders
+        print(f"📈 PERFORMANCE LEADERS:")
+        print(f"   🏆 Best return: {best_overall['return_pct']:+.2f}% (Buy: {best_overall['buy_threshold']:.1f}%, TP: {best_overall['take_profit']:.1f}%)")
+        print(f"   🎯 Best win rate: {best_win_rate['win_rate']:.1f}% (Buy: {best_win_rate['buy_threshold']:.1f}%, TP: {best_win_rate['take_profit']:.1f}%)")
+        print(f"   💰 Most profit taking: {most_profit_taking['tp_rate']:.1f}% (Buy: {most_profit_taking['buy_threshold']:.1f}%, TP: {most_profit_taking['take_profit']:.1f}%)")
+        print()
         
         # Show best per period
         print(f"📊 Performance by Period:")
         for period, result in period_results.items():
             print(f"   {period:10s}: {result['return_pct']:+6.1f}% | "
-                  f"Buy {result['buy_threshold']:4.1f}% | Sell {result['sell_threshold']:4.1f}% | "
-                  f"TP {result['take_profit']:4.1f}%")
+                  f"Buy {result['buy_threshold']:4.1f}% | TP {result['take_profit']:4.1f}%")
+        print()
         
-        print(f"\n🏆 OPTIMAL TITAN CONFIGURATION:")
-        print("=" * 40)
+        # Detailed results table (enhanced presentation)
+        print(f"📋 DETAILED RESULTS TABLE for {self.symbol}:")
+        print("-" * 80)
+        print(f"{'Buy%':<5} {'TP%':<5} {'Return%':<8} {'Win%':<6} {'Trades':<7} {'PT%':<6} {'Fees%':<6}")
+        print("-" * 80)
+        
+        # Show top 10 results
+        top_results = df.nlargest(10, 'return_pct')
+        for _, row in top_results.iterrows():
+            buy = f"{row['buy_threshold']:.1f}"
+            tp = f"{row['take_profit']:.1f}"
+            ret = f"{row['return_pct']:+.1f}"
+            win = f"{row['win_rate']:.0f}"
+            trades = f"{row['total_trades']:.0f}"
+            pt = f"{row['tp_rate']:.0f}"
+            fees = f"{row['fee_pct']:.1f}"
+            
+            # Highlight the best overall
+            highlight = " 🏆" if row['return_pct'] == best_overall['return_pct'] else ""
+            
+            print(f"{buy:<5} {tp:<5} {ret:<8} {win:<6} {trades:<7} {pt:<6} {fees:<6}{highlight}")
+        
+        print("-" * 80)
+        print("🏆 = Best Overall Performance")
+        print()
+        
+        return best_overall, period_results
+
+    def show_titan_configuration(self, results):
+        """Show optimal configuration for TITAN bot with enhanced presentation"""
+        best_overall, period_results = self.display_enhanced_results(results)
+        
+        if best_overall is None:
+            return None, None
+        
+        print(f"🎯 OPTIMAL TITAN CONFIGURATION for {self.symbol}:")
+        print("=" * 50)
         print(f"🎯 Asset to trade: {self.symbol}")
         print(f"📈 Buy threshold: {best_overall['buy_threshold']:.1f}%")
         print(f"📉 Sell threshold: {best_overall['sell_threshold']:.1f}%")
         print(f"🎯 Take profit level: {best_overall['take_profit']:.1f}%")
-        print("💰 Position sizing: [Configure in TITAN as needed]")
+        print(f"💰 Position sizing: adaptive (recommended)")
         
-        print(f"\n📈 Expected Performance:")
+        print(f"📈 Expected Performance:")
         print(f"   💰 Return: {best_overall['return_pct']:+.1f}%")
         print(f"   🎯 Win rate: {best_overall['win_rate']:.1f}%")
         print(f"   📊 TP hit rate: {best_overall['tp_rate']:.1f}%")
         print(f"   🔄 Trades: {best_overall['total_trades']}")
         print(f"   💸 Fees: {best_overall['fee_pct']:.1f}% of capital")
         
-        print(f"\n🤖 COPY THESE VALUES TO TITAN:")
-        print("=" * 40)
-        print(f"Asset: {self.symbol}")
-        print(f"Buy: {best_overall['buy_threshold']:.1f}")
-        print(f"Sell: {best_overall['sell_threshold']:.1f}")
-        print(f"Take Profit: {best_overall['take_profit']:.1f}")
+        # Asset-specific insights (enhanced from TPO)
+        if self.market_data:
+            volatility = self.market_data['volatility']
+            print(f"\n💡 {self.base_asset} OPTIMIZATION INSIGHTS:")
+            if volatility > 10:
+                print(f"   ⚡ High volatility asset: Lower thresholds capture more opportunities")
+            elif volatility > 5:
+                print(f"   📊 Medium volatility asset: Balanced approach with moderate thresholds")
+            else:
+                print(f"   📈 Low volatility asset: Higher thresholds reduce noise trading")
         
         return best_overall, period_results
 
@@ -370,12 +609,17 @@ class ProphetSimplified:
                 'sell_threshold': best_config['sell_threshold'], 
                 'take_profit': best_config['take_profit'],
                 'position_sizing': 'adaptive',  # Prophet's recommended default
-                'rationale': f"Prophet optimized on {datetime.now().strftime('%Y-%m-%d')}: {best_config['return_pct']:+.1f}% return, {best_config['win_rate']:.1f}% win rate",
+                'rationale': f"Prophet v3.0 optimized on {datetime.now().strftime('%Y-%m-%d')}: {best_config['return_pct']:+.1f}% return, {best_config['win_rate']:.1f}% win rate",
                 'expected_performance': f"{best_config['return_pct']:+.1f}% return, {best_config['win_rate']:.1f}% win rate, {best_config['total_trades']} trades",
                 'analysis_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'prophet_version': '2.0',
+                'prophet_version': '3.0',
                 'test_periods': '30-60 days',
-                'optimization_score': best_config['return_pct']
+                'optimization_score': best_config['return_pct'],
+                'market_data': {
+                    'volatility': self.market_data['volatility'] if self.market_data else 0,
+                    'volume_24h': self.market_data['volume_24h'] if self.market_data else 0,
+                    'analysis_type': 'market_based_ranges'
+                }
             }
             
             # Load existing recommendations file or create new
@@ -386,7 +630,7 @@ class ProphetSimplified:
             except (FileNotFoundError, json.JSONDecodeError):
                 existing_data = {
                     'timestamp': datetime.now().isoformat(),
-                    'prophet_version': '2.0',
+                    'prophet_version': '3.0',
                     'recommendations': {}
                 }
             
@@ -394,18 +638,17 @@ class ProphetSimplified:
             existing_data['recommendations'][symbol] = recommendation
             existing_data['last_updated'] = datetime.now().isoformat()
             existing_data['timestamp'] = datetime.now().isoformat()
+            existing_data['prophet_version'] = '3.0'
             
             # Save to file
             with open(reco_file, 'w') as f:
                 json.dump(existing_data, f, indent=2)
             
-            print(f"\n💾 PROPHET RECOMMENDATIONS SAVED!")
+            print(f"\n💾 PROPHET v3.0 RECOMMENDATIONS SAVED!")
             print(f"📁 File: {reco_file}")
-            print(f"🎯 Symbol: {symbol}")
-            print(f"📈 Buy: {best_config['buy_threshold']:.1f}%")
-            print(f"📉 Sell: {best_config['sell_threshold']:.1f}%") 
-            print(f"🎯 TP: {best_config['take_profit']:.1f}%")
-            print(f"⏰ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"🎯 {symbol}: Buy {best_config['buy_threshold']:.1f}%, Sell {best_config['sell_threshold']:.1f}%, TP {best_config['take_profit']:.1f}%")
+            print(f"🤖 TITAN ready to load these optimized settings")
+            print(f"⏰ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
             return True
             
@@ -473,18 +716,51 @@ def get_fallback_pairs():
         'PEPEPHP', 'FLOKIPHP', 'BONKPHP', 'WIFPHP', 'DOGSPHP'
     ]
 
+def get_symbol_suggestions():
+    """Get trading pair suggestions with volume data"""
+    try:
+        api = CoinsAPI(
+            api_key=os.getenv('COINS_API_KEY'),
+            secret_key=os.getenv('COINS_SECRET_KEY')
+        )
+        
+        tickers = api.get_24hr_ticker()
+        if not isinstance(tickers, list):
+            tickers = [tickers]
+        
+        php_pairs = []
+        for ticker in tickers:
+            symbol = ticker.get('symbol', '')
+            if symbol.endswith('PHP'):
+                volume = float(ticker.get('quoteVolume', 0))
+                price_change = float(ticker.get('priceChangePercent', 0))
+                
+                if volume > 10000:
+                    php_pairs.append({
+                        'symbol': symbol,
+                        'volume': volume,
+                        'price_change': price_change
+                    })
+        
+        php_pairs.sort(key=lambda x: x['volume'], reverse=True)
+        return php_pairs[:15]
+        
+    except Exception as e:
+        print(f"❌ Error getting symbol suggestions: {e}")
+        return []
+
 def main():
     try:
-        print("🔮 PROPHET v2.0 - TITAN Bot Configuration Generator")
-        print("🎯 Finds optimal parameters and saves them for TITAN")
-        print("💾 Now saves recommendations to prophet_reco.json")
-        print("=" * 55)
+        print("🔮 PROPHET v3.0 - Enhanced Comprehensive Parameter Optimizer")
+        print("🎯 NEW: Market-based parameter ranges + Interactive configuration")
+        print("💾 Optimized recommendations saved for TITAN integration")
+        print("=" * 75)
         
         if not os.getenv('COINS_API_KEY'):
             print("❌ API keys not found in environment")
             return
         
-        print("🔮 Select asset for TITAN optimization:")
+        print("🔮 Select asset for enhanced TITAN optimization:")
         print("1. XRPPHP - Stable performer")
         print("2. SOLPHP - Higher volatility")
         print("3. BTCPHP - Conservative choice")
@@ -498,7 +774,7 @@ def main():
             print("\n🔍 Getting available pairs...")
             pairs = get_available_pairs()
             
-            if not pairs:  # This was the bug - empty pairs list
+            if not pairs:
                 print("❌ Could not retrieve trading pairs")
                 print("🔮 PROPHET suggests trying option 6 (Custom pair) or options 1-4")
                 return
@@ -518,7 +794,7 @@ def main():
                 except ValueError:
                     print("⚠️  Please enter a valid number")
                 except KeyboardInterrupt:
-                    print("\n🔮 PROPHET session ended gracefully")
+                    print("\n🔮 PROPHET v3.0 session ended gracefully")
                     return
                     
         elif choice == '6':
@@ -527,7 +803,7 @@ def main():
                 if not symbol.endswith('PHP'):
                     symbol += 'PHP'
             except KeyboardInterrupt:
-                print("\n🔮 PROPHET session ended gracefully")
+                print("\n🔮 PROPHET v3.0 session ended gracefully")
                 return
             
         else:
@@ -539,55 +815,81 @@ def main():
             }
             symbol = symbol_map.get(choice, 'XRPPHP')
         
-        print(f"\n🎯 Optimizing {symbol} for TITAN bot...")
+        print(f"\n🎯 Starting enhanced optimization for {symbol}...")
         
-        try:
-            confirm = input(f"🔮 Start optimization? (y/n): ").lower()
-            if not confirm.startswith('y'):
-                print("🔮 PROPHET awaits your return.")
-                return
-        except KeyboardInterrupt:
-            print("\n🔮 PROPHET session ended gracefully")
+        # Initialize Prophet with enhanced capabilities
+        prophet = ProphetEnhanced(symbol)
+        
+        # Validate symbol with market analysis
+        if not prophet.validate_symbol():
+            print("❌ Symbol validation failed!")
             return
         
-        # Run optimization
-        prophet = ProphetSimplified(symbol)
+        # Get market data for asset-specific parameter ranges
+        prophet.market_data = prophet.get_market_data_analysis()
+        if not prophet.market_data:
+            print("❌ Market data analysis failed!")
+            return
+        
+        # Get asset-specific parameter ranges with override capability
+        volatility = prophet.market_data['volatility']
+        param_config = prophet.get_asset_specific_parameters(volatility, allow_override=True)
+        
+        # Set the parameters for optimization
+        prophet.buy_thresholds = param_config['buy_thresholds']
+        prophet.sell_thresholds = param_config['sell_thresholds']
+        prophet.take_profit_levels = param_config['take_profit_range']
+        
+        print(f"\n✅ Configuration complete!")
+        print(f"🎯 Asset Category: {param_config['category']}")
+        print(f"📊 Testing {len(prophet.take_profit_levels)} TP × {len(prophet.buy_thresholds)} buy combinations")
+        
+        try:
+            confirm = input(f"🔮 Start enhanced optimization? (y/n): ").lower()
+            if not confirm.startswith('y'):
+                print("🔮 PROPHET v3.0 awaits your return.")
+                return
+        except KeyboardInterrupt:
+            print("\n🔮 PROPHET v3.0 session ended gracefully")
+            return
+        
+        # Run enhanced optimization
         results = prophet.find_optimal_parameters([30, 60])
         
         if results:
             best_config, period_results = prophet.show_titan_configuration(results)
             
             if best_config is not None:
-                # Save recommendations for TITAN
+                # Save enhanced recommendations for TITAN
                 save_success = prophet.save_recommendations_for_titan(best_config, symbol)
                 
                 if save_success:
-                    print(f"\n🎉 PROPHET OPTIMIZATION COMPLETE!")
-                    print(f"💾 Recommendations saved to prophet_reco.json")
-                    print(f"🤖 TITAN will now load these optimized settings for {symbol}")
+                    print(f"\n🎉 PROPHET v3.0 ENHANCED OPTIMIZATION COMPLETE!")
+                    print(f"💾 Enhanced recommendations saved to prophet_reco.json")
+                    print(f"🤖 TITAN will now load these market-optimized settings for {symbol}")
                     
                     print(f"\n📋 NEXT STEPS:")
-                    print("=" * 50)
-                    print("🔮 python prophet.py → ✅ DONE (generated prophet_reco.json)")
-                    print("🤖 python titan.py   → Load Prophet's latest findings")
-                    print("=" * 50)
+                    print("=" * 60)
+                    print("🔮 python prophet.py → ✅ DONE (generated enhanced recommendations)")
+                    print("🤖 python titan.py   → Load Prophet's market-optimized findings")
+                    print("=" * 60)
                     print(f"✨ When you run TITAN, it will automatically suggest:")
-                    print(f"   📈 Buy: {best_config['buy_threshold']:.1f}%")
-                    print(f"   📉 Sell: {best_config['sell_threshold']:.1f}%")
-                    print(f"   🎯 TP: {best_config['take_profit']:.1f}%")
+                    print(f"   📈 Buy: {best_config['buy_threshold']:.1f}% (market-optimized)")
+                    print(f"   📉 Sell: {best_config['sell_threshold']:.1f}% (calculated)")
+                    print(f"   🎯 TP: {best_config['take_profit']:.1f}% (volatility-based)")
                     print(f"   (You can still customize any values in TITAN)")
                 else:
-                    print("❌ Failed to save recommendations")
+                    print("❌ Failed to save enhanced recommendations")
             else:
                 print("❌ No optimal configuration found")
         else:
             print("❌ No results generated. Check your data connection.")
             
     except KeyboardInterrupt:
-        print("\n🔮 PROPHET session ended gracefully")
-        print("✨ Thank you for consulting PROPHET")
+        print("\n🔮 PROPHET v3.0 session ended gracefully")
+        print("✨ Thank you for consulting enhanced PROPHET")
     except Exception as e:
-        print(f"\n❌ PROPHET encountered an error: {e}")
+        print(f"\n❌ PROPHET v3.0 encountered an error: {e}")
         print("🔮 Please try again or check your configuration")
 
 if __name__ == "__main__":
