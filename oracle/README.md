@@ -10,7 +10,7 @@ ORACLE is a **specialized AI trading bot** that requires:
 
 - ✅ **All standard requirements** (Python, Coins.ph API, etc.)
 - 🔑 **MarketRaker Account** - AI signal provider
-- 💰 **MarketRaker Tokens** - Purchase on Cardano blockchain
+- 💰 **MarketRaker Tokens** - Purchase $RAKER token on Cardano blockchain
 - 🔗 **Active Subscription** - For live AI signals
 - 🧠 **Advanced Trading Knowledge** - AI signal interpretation
 
@@ -61,7 +61,7 @@ Before running ORACLE, you need:
    - Complete account registration
 
 2. **Purchase MarketRaker Tokens**
-   - Buy tokens on Cardano blockchain
+   - Buy $RAKER tokens on Cardano blockchain (NFA)
    - Required for AI signal subscriptions
 
 3. **Get Verification Key**
@@ -281,7 +281,7 @@ logging.basicConfig(level=logging.DEBUG)
 - **MarketRaker Dependency**: Requires active subscription
 - **Limited Pairs**: Currently supports 4 major pairs
 - **USD Signals Only**: Designed for USD-based AI signals
-- **Premium Service**: Requires token purchase on Cardano
+- **Premium Service**: Requires $RAKER token
 - **Advanced Setup**: More complex than basic momentum trading
 
 ---
@@ -303,7 +303,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 ### **🚨 Premium Service Requirements**
 - MarketRaker requires **paid subscription**
-- Tokens must be **purchased on Cardano**
+- $RAKER tokens must be **purchased on Cardano**
 - **Not suitable** for casual traders
 - Consider **TITAN** for free momentum trading
 
