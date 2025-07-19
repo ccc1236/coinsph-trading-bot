@@ -148,6 +148,39 @@ def check_trading_volumes():
             print("No PHP pairs found with significant volume")
 
         print()
+        print("USD STABLECOIN PAIRS (USDC/USDT - Alternative Trading Options):")
+        print("-" * 70)
+        usd_pairs = [d for d in volume_data if d['currency'] in ('SDC', 'SDT')]  # Last 3 chars: USDC->SDC, USDT->SDT
+        
+        if usd_pairs:
+            header = f"{'Rk':>2}  {'Symbol':<12} {'Quote Volume':<15} {'Price Change':<12} {'Last Price'}"
+            print(header)
+            print("-" * 70)
+            for i, data in enumerate(usd_pairs[:10], start=1):
+                quote_vol = data['quote_volume']
+                price_change = data['price_change']
+                last_price = data['last_price']
+                
+                # Use $ for USD pairs
+                vol_str = format_compact(quote_vol, '$')
+                change_str = f"{price_change:+.2f}%"
+                if price_change > 0:
+                    change_str = f"↑ {change_str}"
+                elif price_change < 0:
+                    change_str = f"↓ {change_str}"
+                else:
+                    change_str = f"→ {change_str}"
+
+                if last_price >= 1000:
+                    price_str = f"${last_price / 1000:.1f}K"
+                else:
+                    price_str = f"${last_price:.4f}"
+
+                print(f"{i:>2}. {data['symbol']:<12} {vol_str:<15} {change_str:<12} {price_str}")
+        else:
+            print("No USDC/USDT pairs found with significant volume")
+
+        print()
         print("RECOMMENDATIONS FOR YOUR BOT:")
         print("-" * 40)
         if php_pairs:
@@ -157,13 +190,19 @@ def check_trading_volumes():
             print("High volume => better depth & tighter spreads")
         else:
             print("No PHP pair data for recommendations")
+        
+        if usd_pairs:
+            top_usd = usd_pairs[0]
+            print(f"Highest volume USD pair: {top_usd['symbol']}")
+            print("USD pairs good for: arbitrage, lower fees, global market access")
+        
         print()
 
-        return symbols, php_pairs
+        return symbols, php_pairs, usd_pairs
 
     except Exception as e:
         print(f"Error checking volumes: {e}")
-        return None, None
+        return None, None, None
 
 
 def list_all_php_pairs(symbols):
@@ -190,7 +229,7 @@ def list_all_php_pairs(symbols):
                     'status': status
                 })
 
-        print(f"PHP COMPLETE PHP TRADING PAIRS LIST ({len(php_pairs)} pairs):")
+        print(f"COMPLETE PHP TRADING PAIRS LIST ({len(php_pairs)} pairs):")
         print("-" * PHP_TABLE_WIDTH)
         print(PHP_HEADER_FMT.format(
             rank='#', symbol='Symbol', base='Base Asset',
@@ -258,6 +297,114 @@ def list_all_php_pairs(symbols):
 
     except Exception as e:
         print(f"Error listing PHP pairs: {e}")
+        return None
+
+
+def list_all_usd_pairs(symbols):
+    api = CoinsAPI(
+        api_key=os.getenv('COINS_API_KEY'),
+        secret_key=os.getenv('COINS_SECRET_KEY')
+    )
+
+    print("=" * 60)
+    print("ALL USD STABLECOIN PAIRS ON COINS.PH")
+    print("=" * 60)
+
+    try:
+        usd_pairs = []
+        for symbol in symbols:
+            s_name = symbol.get('symbol', '')
+            base_asset = symbol.get('baseAsset', '')
+            quote_asset = symbol.get('quoteAsset', '')
+            status = symbol.get('status', '')
+            if quote_asset in ('USDC', 'USDT'):
+                usd_pairs.append({
+                    'symbol': s_name,
+                    'base_asset': base_asset,
+                    'quote_asset': quote_asset,
+                    'status': status
+                })
+
+        print(f"COMPLETE USD PAIRS LIST ({len(usd_pairs)} pairs):")
+        print("-" * PHP_TABLE_WIDTH)
+        print(PHP_HEADER_FMT.format(
+            rank='#', symbol='Symbol', base='Base Asset',
+            status='Status', min_order='Min Order'
+        ))
+        print("-" * PHP_TABLE_WIDTH)
+
+        for idx, pair in enumerate(usd_pairs, start=1):
+            min_order = "N/A"
+            try:
+                info = api.get_symbol_info(pair['symbol'])
+                if info:
+                    for f in info.get('filters', []):
+                        if f.get('filterType') == 'MIN_NOTIONAL':
+                            mn = float(f.get('minNotional', 0))
+                            min_order = f"${mn:.2f}" if mn < 100 else f"${mn:.0f}"
+                            break
+            except Exception:
+                min_order = "Error"
+
+            status_display = pair['status'].upper()[:STATUS_W]
+            # Show quote asset in base column for USD pairs
+            base_display = f"{pair['base_asset']}/{pair['quote_asset']}"[:BASE_ASSET_W]
+            
+            print(PHP_ROW_FMT.format(
+                rank=idx,
+                symbol=pair['symbol'],
+                base=base_display,
+                status=status_display,
+                min_order=min_order
+            ))
+
+        print("-" * PHP_TABLE_WIDTH)
+
+        # Separate by quote asset
+        usdc_pairs = [p for p in usd_pairs if p['quote_asset'] == 'USDC']
+        usdt_pairs = [p for p in usd_pairs if p['quote_asset'] == 'USDT']
+        
+        print(f"\nBY STABLECOIN TYPE:")
+        print(f"  USDC pairs: {len(usdc_pairs)}")
+        print(f"  USDT pairs: {len(usdt_pairs)}")
+
+        popular = ['BTC', 'ETH', 'XRP', 'SOL', 'ADA', 'DOT', 'MATIC', 'LINK', 'LTC', 'BCH', 'DOGE', 'AVAX']
+        popular_available = [
+            p for p in usd_pairs if p['base_asset'] in popular and p['status'].upper() == 'TRADING'
+        ]
+
+        if popular_available:
+            print("\nPOPULAR TRADEABLE USD PAIRS:")
+            for p in popular_available:
+                print(f"  - {p['symbol']} ({p['base_asset']}/{p['quote_asset']})")
+
+        trading = [p for p in usd_pairs if p['status'].upper() == 'TRADING']
+        brk = [p for p in usd_pairs if p['status'].upper() == 'BREAK']
+        other = [p for p in usd_pairs if p['status'].upper() not in ['TRADING', 'BREAK']]
+
+        print("\nTRADING STATUS SUMMARY:")
+        print(f"  Trading: {len(trading)} pairs")
+        if brk:
+            print(f"  Break:   {len(brk)} pairs")
+        if other:
+            print(f"  Other:   {len(other)} pairs")
+
+        print("\nFOR TRADING BOTS (USD examples):")
+        for sym in [p['symbol'] for p in trading[:8]]:
+            print(f"  - {sym}")
+        if len(trading) > 8:
+            print(f"  ... and {len(trading) - 8} more")
+
+        print("\nUSD PAIRS ADVANTAGES:")
+        print("  • Lower trading fees compared to PHP")
+        print("  • Access to global market pricing")
+        print("  • Good for arbitrage opportunities")
+        print("  • Stable value pegged to US Dollar\n")
+
+        return usd_pairs
+
+    except Exception as e:
+        print(f"Error listing USD pairs: {e}")
         return None
 
 
@@ -337,17 +484,23 @@ def main():
     print("COINS.PH MARKET ANALYSIS TOOL")
     print("=" * 50)
     print("1. Volume Analysis (Top trading pairs by volume)")
-    print("2. Complete PHP Pairs List (All available PHP pairs)")
-    print("3. Both (Volume + List)")
-    print("4. Pair Details (Specific symbol)")
+    print("2. PHP Pairs List (All available PHP pairs)")
+    print("3. USD Pairs List (All USDC/USDT pairs)")
+    print("4. Complete Analysis (Volume + PHP + USD)")
+    print("5. Pair Details (Specific symbol lookup)")
 
     try:
-        choice = input("\nEnter choice (1-4, default: 1): ").strip()
-        if choice in ('1', '3', ''):
-            symbols, _php_pairs = check_trading_volumes()
-            if choice == '3' and symbols:
+        choice = input("\nEnter choice (1-5, default: 1): ").strip()
+        
+        if choice in ('1', '4', ''):
+            symbols, php_pairs, usd_pairs = check_trading_volumes()
+            
+            if choice == '4' and symbols:
                 print()
                 list_all_php_pairs(symbols)
+                print()
+                list_all_usd_pairs(symbols)
+                
         elif choice == '2':
             print("Fetching exchange information...")
             api = CoinsAPI(
@@ -360,15 +513,97 @@ def main():
                 list_all_php_pairs(symbols)
             else:
                 print("Could not fetch symbols.")
-        elif choice == '4':
-            while True:
-                sym = input("\nEnter symbol (or blank to quit): ").strip().upper()
-                if not sym or sym.lower() in ('q', 'quit', 'exit'):
-                    break
-                get_pair_details(sym)
+                
+        elif choice == '3':
+            print("Fetching exchange information...")
+            api = CoinsAPI(
+                api_key=os.getenv('COINS_API_KEY'),
+                secret_key=os.getenv('COINS_SECRET_KEY')
+            )
+            exchange_info = api.get_exchange_info()
+            symbols = exchange_info.get('symbols', [])
+            if symbols:
+                list_all_usd_pairs(symbols)
+            else:
+                print("Could not fetch symbols.")
+                
+        elif choice == '5':
+            # Enhanced pair details with quick selection
+            print("\nPAIR DETAILS OPTIONS:")
+            print("a. Manual entry")
+            print("b. Quick select from PHP pairs")
+            print("c. Quick select from USD pairs")
+            
+            detail_choice = input("Choose option (a/b/c, default: a): ").strip().lower()
+            
+            if detail_choice == 'b':
+                # Quick PHP pair selection
+                print("Fetching PHP pairs for quick selection...")
+                api = CoinsAPI(
+                    api_key=os.getenv('COINS_API_KEY'),
+                    secret_key=os.getenv('COINS_SECRET_KEY')
+                )
+                exchange_info = api.get_exchange_info()
+                symbols = exchange_info.get('symbols', [])
+                
+                php_pairs = [s for s in symbols if s.get('quoteAsset') == 'PHP' and s.get('status') == 'TRADING']
+                if php_pairs:
+                    print(f"\nAVAILABLE PHP PAIRS ({len(php_pairs)} total):")
+                    for i, pair in enumerate(php_pairs[:20], 1):  # Show first 20
+                        print(f"{i:2d}. {pair['symbol']}")
+                    if len(php_pairs) > 20:
+                        print(f"    ... and {len(php_pairs) - 20} more")
+                    
+                    try:
+                        pair_num = int(input(f"\nSelect pair number (1-{min(20, len(php_pairs))}): "))
+                        if 1 <= pair_num <= min(20, len(php_pairs)):
+                            selected_symbol = php_pairs[pair_num - 1]['symbol']
+                            get_pair_details(selected_symbol)
+                        else:
+                            print("Invalid selection")
+                    except ValueError:
+                        print("Invalid number")
+                        
+            elif detail_choice == 'c':
+                # Quick USD pair selection
+                print("Fetching USD pairs for quick selection...")
+                api = CoinsAPI(
+                    api_key=os.getenv('COINS_API_KEY'),
+                    secret_key=os.getenv('COINS_SECRET_KEY')
+                )
+                exchange_info = api.get_exchange_info()
+                symbols = exchange_info.get('symbols', [])
+                
+                usd_pairs = [s for s in symbols if s.get('quoteAsset') in ('USDC', 'USDT') and s.get('status') == 'TRADING']
+                if usd_pairs:
+                    print(f"\nAVAILABLE USD PAIRS ({len(usd_pairs)} total):")
+                    for i, pair in enumerate(usd_pairs[:20], 1):  # Show first 20
+                        print(f"{i:2d}. {pair['symbol']}")
+                    if len(usd_pairs) > 20:
+                        print(f"    ... and {len(usd_pairs) - 20} more")
+                    
+                    try:
+                        pair_num = int(input(f"\nSelect pair number (1-{min(20, len(usd_pairs))}): "))
+                        if 1 <= pair_num <= min(20, len(usd_pairs)):
+                            selected_symbol = usd_pairs[pair_num - 1]['symbol']
+                            get_pair_details(selected_symbol)
+                        else:
+                            print("Invalid selection")
+                    except ValueError:
+                        print("Invalid number")
+                        
+            else:
+                # Manual entry (default)
+                while True:
+                    sym = input("\nEnter symbol (or blank to quit): ").strip().upper()
+                    if not sym or sym.lower() in ('q', 'quit', 'exit'):
+                        break
+                    get_pair_details(sym)
+                    
         else:
             print("Invalid choice. Running volume analysis...")
             check_trading_volumes()
+            
     except KeyboardInterrupt:
         print("\nStopped.")
     except Exception as e:
