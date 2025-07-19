@@ -94,9 +94,9 @@ class EcosystemManager:
                     "created": datetime.now().isoformat(),
                     "last_updated": datetime.now().isoformat(),
                     "tools": {
-                        "prophet": {"version": "3.0", "last_used": None},
-                        "titan": {"version": "4.1", "last_used": None},
-                        "momentum_backtest": {"version": "4.6", "last_used": None},
+                        "prophet": {"version": "3.1", "last_used": None},
+                        "titan": {"version": "4.2", "last_used": None},
+                        "momentum_backtest": {"version": "4.7", "last_used": None},
                         "oracle": {"version": "5.0", "last_used": None}
                     },
                     "ecosystem_health": {
@@ -225,22 +225,68 @@ class EcosystemManager:
         
         return insights[:limit]
 
-    def save_optimization_result(self, result: OptimizationResult) -> bool:
-        """Save optimization result from PROPHET or other tools"""
+    def load_optimization_history(self) -> List[Dict[str, Any]]:
+        """Load optimization history with improved error handling"""
         try:
-            # Load existing results
+            if self.optimization_history_file.exists():
+                with open(self.optimization_history_file, 'r') as f:
+                    data = json.load(f)
+                return data.get('results', [])
+            else:
+                return []
+                
+        except json.JSONDecodeError as e:
+            self.logger.error(f"❌ JSON decode error in optimization history: {e}")
+            self.logger.info("🔧 Attempting to recover by backing up corrupted file and creating new one")
+            
+            # Backup the corrupted file
+            try:
+                backup_name = f"{self.optimization_history_file}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                self.optimization_history_file.rename(backup_name)
+                self.logger.info(f"📁 Corrupted file backed up as: {backup_name}")
+            except Exception as backup_error:
+                self.logger.error(f"❌ Could not backup corrupted file: {backup_error}")
+            
+            # Create fresh optimization history file
+            try:
+                fresh_data = {
+                    'last_updated': datetime.now().isoformat(),
+                    'total_optimizations': 0,
+                    'results': []
+                }
+                with open(self.optimization_history_file, 'w') as f:
+                    json.dump(fresh_data, f, indent=2)
+                self.logger.info("✅ Created fresh optimization history file")
+                return []
+            except Exception as create_error:
+                self.logger.error(f"❌ Could not create fresh file: {create_error}")
+                return []
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error loading optimization history: {e}")
+            return []
+
+    def save_optimization_result(self, result: OptimizationResult) -> bool:
+        """Save optimization result with improved error handling"""
+        try:
+            # Load existing results with error recovery
             optimization_history = self.load_optimization_history()
             
             # Add new result
             optimization_history.append(asdict(result))
             
-            # Save updated history
-            with open(self.optimization_history_file, 'w') as f:
+            # Save updated history with atomic write
+            temp_file = f"{self.optimization_history_file}.tmp"
+            with open(temp_file, 'w') as f:
                 json.dump({
                     'last_updated': datetime.now().isoformat(),
                     'total_optimizations': len(optimization_history),
                     'results': optimization_history
                 }, f, indent=2)
+            
+            # Atomic rename to replace the original file
+            import os
+            os.replace(temp_file, self.optimization_history_file)
             
             # Update ecosystem health
             self.ecosystem_config['ecosystem_health']['active_optimizations'] = len(optimization_history)
@@ -251,21 +297,14 @@ class EcosystemManager:
             
         except Exception as e:
             self.logger.error(f"❌ Error saving optimization result: {e}")
+            # Clean up temp file if it exists
+            temp_file = f"{self.optimization_history_file}.tmp"
+            if os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                except:
+                    pass
             return False
-
-    def load_optimization_history(self) -> List[Dict[str, Any]]:
-        """Load optimization history"""
-        try:
-            if self.optimization_history_file.exists():
-                with open(self.optimization_history_file, 'r') as f:
-                    data = json.load(f)
-                return data.get('results', [])
-            else:
-                return []
-                
-        except Exception as e:
-            self.logger.error(f"❌ Error loading optimization history: {e}")
-            return []
 
     def get_latest_optimization(self, symbol: str) -> Optional[OptimizationResult]:
         """Get latest optimization result for a symbol"""
