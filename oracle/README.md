@@ -321,6 +321,64 @@ logging.basicConfig(level=logging.DEBUG)
 
 ---
 
+## ⚠️ IMPORTANT LEGAL DISCLAIMER - ORACLE SPECIFIC
+
+### **🚨 NOT FINANCIAL ADVICE - ADVANCED AI TRADING RISKS**
+**ORACLE is provided for EDUCATIONAL and RESEARCH purposes ONLY.**
+
+**BY USING ORACLE, YOU ACKNOWLEDGE ADDITIONAL RISKS beyond the [main disclaimer](../README.md):**
+
+### **🤖 AI Signal Risks**
+- **AI predictions can be completely wrong** - no guarantee of accuracy
+- **Signal quality algorithms are experimental** and may fail
+- **Automated position sizing can amplify both gains and losses**
+- **USD/PHP conversion errors** may result in incorrect position sizes
+- **AI system failures** may cause unexpected trading behavior
+
+### **💰 MarketRaker & $RAKER Token Risks**
+- **$RAKER is a cryptocurrency** with its own price volatility and risks
+- **Token value can go to ZERO** - you may lose your entire investment
+- **MarketRaker service dependency** - signals may stop without notice
+- **We are NOT affiliated with MarketRaker** and make no guarantees about their service
+- **Subscription costs are separate** from any trading profits/losses
+- **Cardano blockchain risks** apply to $RAKER token transactions
+
+### **🔴 Premium Service Risks**
+- **Paying for tokens does NOT guarantee profitable signals**
+- **Premium access does NOT reduce trading risks**
+- **Token purchases are separate investments** that can lose value
+- **Service interruptions** may occur without compensation
+
+### **⚖️ Enhanced Position Sizing Risks**
+- **Dynamic position sizing can increase exposure** beyond your comfort level
+- **AI-driven position calculations** may result in larger losses
+- **Quality assessment algorithms** may incorrectly evaluate signals
+- **Automated sizing decisions** happen without human oversight
+
+### **💸 NO LIABILITY FOR ENHANCED LOSSES**
+**The authors are NOT LIABLE for:**
+- Losses from AI signal inaccuracy
+- $RAKER token value depreciation
+- MarketRaker service failures
+- Position sizing algorithm errors
+- USD/PHP conversion mistakes
+- Premium subscription costs
+
+### **🛡️ ORACLE-Specific Warnings**
+- **Start with VERY SMALL amounts** to test AI signal quality
+- **Monitor position sizing closely** - it can increase risk
+- **$RAKER tokens are speculative investments** - only invest what you can lose
+- **AI trading is highly experimental** - expect unexpected behavior
+- **Test mode extensively** before live trading
+
+**⚠️ ORACLE IS FOR ADVANCED TRADERS ONLY - CONSIDER [TITAN](../README.md) FOR SAFER MOMENTUM TRADING ⚠️**
+
+---
+
+**For complete legal disclaimers, see the [main README](../README.md). Use ORACLE entirely at your own risk.**
+
+---
+
 ## 📞 Support
 
 - **ORACLE Issues**: Check logs and webhook connectivity
