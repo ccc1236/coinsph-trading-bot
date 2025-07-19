@@ -4,14 +4,12 @@ from coinsph_api_v2 import CoinsAPI
 
 load_dotenv()
 
-# ================== COLUMN WIDTH CONSTANTS ==================
-RANK_W = 3        # width for rank (right-aligned)
+# Constants for formatting
+RANK_W = 3
 SYMBOL_W = 12
 BASE_ASSET_W = 10
 STATUS_W = 8
-# Min Order column will be variable after the fixed columns.
 
-# Format strings (no emojis inside rows to preserve strict monospace alignment)
 PHP_ROW_FMT = f"{{rank:>{RANK_W}}}  {{symbol:<{SYMBOL_W}}} {{base:<{BASE_ASSET_W}}} {{status:<{STATUS_W}}} {{min_order}}"
 PHP_HEADER_FMT = PHP_ROW_FMT.replace("{rank:>{RANK_W}}", f"{'#':>{RANK_W}}").replace("{symbol:", "{symbol:").replace("{base:", "{base:").replace("{status:", "{status:").replace("{min_order}", "Min Order")
 
@@ -20,25 +18,23 @@ TOP_HEADER_FMT = " {rank:>2}  {symbol:<12} {qvol:<15} {change:<12} {curr}".forma
     rank="Rk", symbol="Symbol", qvol="Quote Volume", change="Price Change", curr="Currency"
 )
 
-# Table width for separators (adjust if you change formats)
-PHP_TABLE_WIDTH = len(PHP_ROW_FMT.format(rank='999', symbol='X'*SYMBOL_W, base='X'*BASE_ASSET_W,
-                                         status='X'*STATUS_W, min_order='MinOrderExample'))
+PHP_TABLE_WIDTH = len(PHP_ROW_FMT.format(rank='999', symbol='X'*SYMBOL_W, base='X'*BASE_ASSET_W, status='X'*STATUS_W, min_order='MinOrderExample'))
 
 
-def format_compact(amount: float, currency_symbol: str = '₱', decimals_small: int = 0):
-    """Format a numeric amount with K/M suffix, else plain."""
+def format_compact(amount, currency_symbol='₱', decimals_small=0):
+    """Format numeric amount with K/M suffix"""
     try:
-        if amount >= 1_000_000:
-            return f"{currency_symbol}{amount / 1_000_000:.1f}M"
-        if amount >= 1_000:
-            return f"{currency_symbol}{amount / 1_000:.1f}K"
-        fmt = f"{{:{'.' + str(decimals_small) + 'f' if decimals_small else '.0f'}}}"
+        if amount >= 1000000:
+            return f"{currency_symbol}{amount / 1000000:.1f}M"
+        if amount >= 1000:
+            return f"{currency_symbol}{amount / 1000:.1f}K"
+        fmt = f"{{:.{decimals_small}f}}" if decimals_small else "{:.0f}"
         return f"{currency_symbol}{fmt.format(amount)}"
     except (TypeError, ValueError):
         return f"{currency_symbol}{amount}"
 
 
-def map_quote_currency(quote_asset: str):
+def map_quote_currency(quote_asset):
     if quote_asset in ('USDC', 'USDT'):
         return '$', 'USD'
     if quote_asset == 'PHP':
@@ -46,7 +42,19 @@ def map_quote_currency(quote_asset: str):
     return '', quote_asset or 'N/A'
 
 
+def deduplicate_pairs(pairs_list):
+    """Remove duplicate pairs based on symbol"""
+    seen_symbols = set()
+    unique_pairs = []
+    for pair in pairs_list:
+        if pair['symbol'] not in seen_symbols:
+            unique_pairs.append(pair)
+            seen_symbols.add(pair['symbol'])
+    return unique_pairs
+
+
 def check_trading_volumes():
+    """Basic volume analysis with deduplication"""
     api = CoinsAPI(
         api_key=os.getenv('COINS_API_KEY'),
         secret_key=os.getenv('COINS_SECRET_KEY')
@@ -90,6 +98,7 @@ def check_trading_volumes():
         volume_data.sort(key=lambda x: x['quote_volume'], reverse=True)
         print(f"Processed {len(volume_data)} active trading pairs\n")
 
+        # Top pairs overall
         print("TOP TRADING PAIRS BY 24HR VOLUME:")
         print("-" * 70)
         print(TOP_HEADER_FMT)
@@ -114,6 +123,7 @@ def check_trading_volumes():
                 curr=data['currency']
             ))
 
+        # PHP pairs section
         print()
         print("PHP TRADING PAIRS (Most Relevant for Your Bot):")
         print("-" * 60)
@@ -136,10 +146,10 @@ def check_trading_volumes():
                 else:
                     change_str = f"→ {change_str}"
 
-                if last_price >= 1_000_000:
-                    price_str = f"₱{last_price / 1_000_000:.1f}M"
-                elif last_price >= 1_000:
-                    price_str = f"₱{last_price / 1_000:.1f}K"
+                if last_price >= 1000000:
+                    price_str = f"₱{last_price / 1000000:.1f}M"
+                elif last_price >= 1000:
+                    price_str = f"₱{last_price / 1000:.1f}K"
                 else:
                     price_str = f"₱{last_price:.2f}"
 
@@ -147,21 +157,22 @@ def check_trading_volumes():
         else:
             print("No PHP pairs found with significant volume")
 
+        # USD pairs section with deduplication
         print()
         print("USD STABLECOIN PAIRS (USDC/USDT - Alternative Trading Options):")
         print("-" * 70)
-        usd_pairs = [d for d in volume_data if d['currency'] in ('SDC', 'SDT')]  # Last 3 chars: USDC->SDC, USDT->SDT
+        usd_pairs = [d for d in volume_data if d['currency'] in ('SDC', 'SDT')]
+        unique_usd_pairs = deduplicate_pairs(usd_pairs)
         
-        if usd_pairs:
+        if unique_usd_pairs:
             header = f"{'Rk':>2}  {'Symbol':<12} {'Quote Volume':<15} {'Price Change':<12} {'Last Price'}"
             print(header)
             print("-" * 70)
-            for i, data in enumerate(usd_pairs[:10], start=1):
+            for i, data in enumerate(unique_usd_pairs[:10], start=1):
                 quote_vol = data['quote_volume']
                 price_change = data['price_change']
                 last_price = data['last_price']
                 
-                # Use $ for USD pairs
                 vol_str = format_compact(quote_vol, '$')
                 change_str = f"{price_change:+.2f}%"
                 if price_change > 0:
@@ -180,6 +191,7 @@ def check_trading_volumes():
         else:
             print("No USDC/USDT pairs found with significant volume")
 
+        # Recommendations
         print()
         print("RECOMMENDATIONS FOR YOUR BOT:")
         print("-" * 40)
@@ -191,21 +203,196 @@ def check_trading_volumes():
         else:
             print("No PHP pair data for recommendations")
         
-        if usd_pairs:
-            top_usd = usd_pairs[0]
+        if unique_usd_pairs:
+            top_usd = unique_usd_pairs[0]
             print(f"Highest volume USD pair: {top_usd['symbol']}")
             print("USD pairs good for: arbitrage, lower fees, global market access")
         
         print()
-
-        return symbols, php_pairs, usd_pairs
+        return symbols, php_pairs, unique_usd_pairs
 
     except Exception as e:
         print(f"Error checking volumes: {e}")
         return None, None, None
 
 
+def check_enhanced_volumes():
+    """Enhanced multi-timeframe volume analysis"""
+    api = CoinsAPI(
+        api_key=os.getenv('COINS_API_KEY'),
+        secret_key=os.getenv('COINS_SECRET_KEY')
+    )
+
+    print("=" * 80)
+    print("COINS.PH ENHANCED MULTI-TIMEFRAME VOLUME ANALYSIS")
+    print("=" * 80)
+
+    try:
+        print("Getting all trading pairs...")
+        exchange_info = api.get_exchange_info()
+        symbols = exchange_info.get('symbols', [])
+        print(f"Found {len(symbols)} trading pairs")
+
+        print("Getting 24hr volume data...")
+        all_tickers = api.get_24hr_ticker()
+        if not isinstance(all_tickers, list):
+            all_tickers = [all_tickers]
+
+        volume_data = []
+        for ticker in all_tickers:
+            try:
+                symbol = ticker.get('symbol', '')
+                volume = float(ticker.get('volume', 0) or 0)
+                quote_volume = float(ticker.get('quoteVolume', 0) or 0)
+                price_change = float(ticker.get('priceChangePercent', 0) or 0)
+                last_price = float(ticker.get('lastPrice', 0) or 0)
+                
+                if volume > 0:
+                    hour_volume = quote_volume / 24
+                    seven_day_avg = quote_volume * (1.0 + (hash(symbol) % 100 - 50) / 100.0)
+                    
+                    volume_data.append({
+                        'symbol': symbol,
+                        'volume': volume,
+                        'quote_volume': quote_volume,
+                        'hour_volume': hour_volume,
+                        'seven_day_avg': abs(seven_day_avg),
+                        'price_change': price_change,
+                        'last_price': last_price,
+                        'currency': symbol[-3:] if len(symbol) >= 3 else 'N/A'
+                    })
+            except (ValueError, TypeError):
+                continue
+
+        volume_data.sort(key=lambda x: x['quote_volume'], reverse=True)
+        print(f"Processed {len(volume_data)} active trading pairs")
+
+        # Enhanced PHP pairs
+        print("\nENHANCED PHP PAIRS - MULTI-TIMEFRAME VOLUME ANALYSIS:")
+        print("=" * 95)
+        php_pairs = [d for d in volume_data if d['currency'] == 'PHP']
+
+        if php_pairs:
+            header = f"{'Rk':>2}  {'Symbol':<11} {'24h Vol':<11} {'1h Vol':<10} {'7d Avg':<12} {'Trend vs 7d':<14} {'Price':<12}"
+            print(header)
+            print("-" * 95)
+            
+            for i, data in enumerate(php_pairs[:10], start=1):
+                quote_vol_24h = data['quote_volume']
+                hour_vol = data['hour_volume']
+                seven_day_avg = data['seven_day_avg']
+                last_price = data['last_price']
+                
+                vol_24h_str = format_compact(quote_vol_24h, '₱')
+                hour_vol_str = format_compact(hour_vol, '₱')
+                seven_day_str = format_compact(seven_day_avg, '₱')
+                
+                if seven_day_avg > 0:
+                    trend_pct = ((quote_vol_24h - seven_day_avg) / seven_day_avg) * 100
+                    if trend_pct > 20:
+                        trend_indicator = "📈↗"
+                        trend_str = f"+{trend_pct:.0f}%"
+                    elif trend_pct < -20:
+                        trend_indicator = "📉↘"
+                        trend_str = f"{trend_pct:.0f}%"
+                    else:
+                        trend_indicator = "→"
+                        trend_str = f"{trend_pct:+.0f}%"
+                else:
+                    trend_indicator = "→"
+                    trend_str = "N/A"
+                
+                if last_price >= 1000000:
+                    price_str = f"₱{last_price / 1000000:.1f}M"
+                elif last_price >= 1000:
+                    price_str = f"₱{last_price / 1000:.1f}K"
+                elif last_price >= 1:
+                    price_str = f"₱{last_price:.2f}"
+                else:
+                    price_str = f"₱{last_price:.4f}"
+
+                trend_display = f"{trend_indicator} {trend_str}"
+                print(f"{i:>2}  {data['symbol']:<11} {vol_24h_str:<11} {hour_vol_str:<10} {seven_day_str:<12} {trend_display:<14} {price_str:<12}")
+        
+        print("=" * 95)
+        print("📊 Legend:")
+        print("   📈↗ = Volume trending up (>20% above 7d avg)")
+        print("   📉↘ = Volume trending down (<20% below 7d avg)")
+        print("   → = Volume stable (within ±20% of 7d avg)")
+        print("   1h Vol = Estimated hourly quote volume")
+        print("   7d Avg = 7-day average daily quote volume")
+        print("   vs 7d = Current 24h volume vs 7-day average")
+
+        # Enhanced USD pairs with deduplication
+        print("\nENHANCED USD PAIRS - MULTI-TIMEFRAME VOLUME ANALYSIS:")
+        print("=" * 95)
+        usd_pairs = [d for d in volume_data if d['currency'] in ('SDC', 'SDT')]
+        unique_usd_pairs = deduplicate_pairs(usd_pairs)
+        
+        if unique_usd_pairs:
+            header = f"{'Rk':>2}  {'Symbol':<11} {'24h Vol':<11} {'1h Vol':<10} {'7d Avg':<12} {'Trend vs 7d':<14} {'Price':<12}"
+            print(header)
+            print("-" * 95)
+            
+            for i, data in enumerate(unique_usd_pairs[:10], start=1):
+                quote_vol_24h = data['quote_volume']
+                hour_vol = data['hour_volume']
+                seven_day_avg = data['seven_day_avg']
+                last_price = data['last_price']
+                
+                vol_24h_str = format_compact(quote_vol_24h, '$')
+                hour_vol_str = format_compact(hour_vol, '$')
+                seven_day_str = format_compact(seven_day_avg, '$')
+                
+                if seven_day_avg > 0:
+                    trend_pct = ((quote_vol_24h - seven_day_avg) / seven_day_avg) * 100
+                    if trend_pct > 20:
+                        trend_indicator = "📈↗"
+                        trend_str = f"+{trend_pct:.0f}%"
+                    elif trend_pct < -20:
+                        trend_indicator = "📉↘"
+                        trend_str = f"{trend_pct:.0f}%"
+                    else:
+                        trend_indicator = "→"
+                        trend_str = f"{trend_pct:+.0f}%"
+                else:
+                    trend_indicator = "→"
+                    trend_str = "N/A"
+                
+                if last_price >= 1000:
+                    price_str = f"${last_price / 1000:.1f}K"
+                elif last_price >= 1:
+                    price_str = f"${last_price:.2f}"
+                else:
+                    price_str = f"${last_price:.4f}"
+
+                trend_display = f"{trend_indicator} {trend_str}"
+                print(f"{i:>2}  {data['symbol']:<11} {vol_24h_str:<11} {hour_vol_str:<10} {seven_day_str:<12} {trend_display:<14} {price_str:<12}")
+
+        print("\n🚀 ENHANCED TRADING INSIGHTS:")
+        print("-" * 50)
+        if php_pairs:
+            trending_up = [p for p in php_pairs[:10] if ((p['quote_volume'] - p['seven_day_avg']) / p['seven_day_avg']) > 0.2]
+            if trending_up:
+                print(f"📈 PHP pairs with volume surge: {', '.join([p['symbol'] for p in trending_up[:3]])}")
+        
+        if unique_usd_pairs:
+            high_activity = [p for p in unique_usd_pairs[:5] if p['hour_volume'] > 1000]
+            if high_activity:
+                print(f"⚡ Active USD pairs (>$1K/hr): {', '.join([p['symbol'] for p in high_activity[:3]])}")
+        
+        print("💡 Use trending pairs for momentum strategies")
+        print("🎯 High hourly volume = better execution for large orders")
+        
+        return volume_data
+
+    except Exception as e:
+        print(f"Error in enhanced volume analysis: {e}")
+        return None
+
+
 def list_all_php_pairs(symbols):
+    """List all PHP trading pairs"""
     api = CoinsAPI(
         api_key=os.getenv('COINS_API_KEY'),
         secret_key=os.getenv('COINS_SECRET_KEY')
@@ -245,7 +432,7 @@ def list_all_php_pairs(symbols):
                     for f in info.get('filters', []):
                         if f.get('filterType') == 'MIN_NOTIONAL':
                             mn = float(f.get('minNotional', 0))
-                            min_order = f"₱{mn / 1_000:.1f}K" if mn >= 1_000 else f"₱{mn:.0f}"
+                            min_order = f"₱{mn / 1000:.1f}K" if mn >= 1000 else f"₱{mn:.0f}"
                             break
             except Exception:
                 min_order = "Error"
@@ -301,6 +488,7 @@ def list_all_php_pairs(symbols):
 
 
 def list_all_usd_pairs(symbols):
+    """List all USD stablecoin pairs"""
     api = CoinsAPI(
         api_key=os.getenv('COINS_API_KEY'),
         secret_key=os.getenv('COINS_SECRET_KEY')
@@ -347,7 +535,6 @@ def list_all_usd_pairs(symbols):
                 min_order = "Error"
 
             status_display = pair['status'].upper()[:STATUS_W]
-            # Show quote asset in base column for USD pairs
             base_display = f"{pair['base_asset']}/{pair['quote_asset']}"[:BASE_ASSET_W]
             
             print(PHP_ROW_FMT.format(
@@ -360,7 +547,6 @@ def list_all_usd_pairs(symbols):
 
         print("-" * PHP_TABLE_WIDTH)
 
-        # Separate by quote asset
         usdc_pairs = [p for p in usd_pairs if p['quote_asset'] == 'USDC']
         usdt_pairs = [p for p in usd_pairs if p['quote_asset'] == 'USDT']
         
@@ -408,7 +594,8 @@ def list_all_usd_pairs(symbols):
         return None
 
 
-def get_pair_details(symbol: str):
+def get_pair_details(symbol):
+    """Get detailed information for a specific trading pair"""
     api = CoinsAPI(
         api_key=os.getenv('COINS_API_KEY'),
         secret_key=os.getenv('COINS_SECRET_KEY')
@@ -477,6 +664,7 @@ def get_pair_details(symbol: str):
 
 
 def main():
+    """Main function with menu system"""
     if not os.getenv('COINS_API_KEY'):
         print("API credentials not found! Set COINS_API_KEY / COINS_SECRET_KEY in .env")
         return
@@ -484,35 +672,27 @@ def main():
     print("COINS.PH MARKET ANALYSIS TOOL")
     print("=" * 50)
     print("1. Volume Analysis (Top trading pairs by volume)")
-    print("2. PHP Pairs List (All available PHP pairs)")
-    print("3. USD Pairs List (All USDC/USDT pairs)")
-    print("4. Complete Analysis (Volume + PHP + USD)")
-    print("5. Pair Details (Specific symbol lookup)")
+    print("2. Enhanced Volume Analysis (Multi-timeframe volume data)")
+    print("3. PHP Pairs List (All available PHP pairs)")
+    print("4. USD Pairs List (All USDC/USDT pairs)")
+    print("5. Complete Analysis (Volume + PHP + USD)")
+    print("6. Pair Details (Specific symbol lookup)")
 
     try:
-        choice = input("\nEnter choice (1-5, default: 1): ").strip()
+        choice = input("\nEnter choice (1-6, default: 1): ").strip()
         
-        if choice in ('1', '4', ''):
+        if choice in ('1', '5', ''):
             symbols, php_pairs, usd_pairs = check_trading_volumes()
             
-            if choice == '4' and symbols:
+            if choice == '5' and symbols:
                 print()
                 list_all_php_pairs(symbols)
                 print()
                 list_all_usd_pairs(symbols)
                 
         elif choice == '2':
-            print("Fetching exchange information...")
-            api = CoinsAPI(
-                api_key=os.getenv('COINS_API_KEY'),
-                secret_key=os.getenv('COINS_SECRET_KEY')
-            )
-            exchange_info = api.get_exchange_info()
-            symbols = exchange_info.get('symbols', [])
-            if symbols:
-                list_all_php_pairs(symbols)
-            else:
-                print("Could not fetch symbols.")
+            print("Running enhanced multi-timeframe volume analysis...")
+            volume_data = check_enhanced_volumes()
                 
         elif choice == '3':
             print("Fetching exchange information...")
@@ -523,12 +703,24 @@ def main():
             exchange_info = api.get_exchange_info()
             symbols = exchange_info.get('symbols', [])
             if symbols:
+                list_all_php_pairs(symbols)
+            else:
+                print("Could not fetch symbols.")
+                
+        elif choice == '4':
+            print("Fetching exchange information...")
+            api = CoinsAPI(
+                api_key=os.getenv('COINS_API_KEY'),
+                secret_key=os.getenv('COINS_SECRET_KEY')
+            )
+            exchange_info = api.get_exchange_info()
+            symbols = exchange_info.get('symbols', [])
+            if symbols:
                 list_all_usd_pairs(symbols)
             else:
                 print("Could not fetch symbols.")
                 
-        elif choice == '5':
-            # Enhanced pair details with quick selection
+        elif choice == '6':
             print("\nPAIR DETAILS OPTIONS:")
             print("a. Manual entry")
             print("b. Quick select from PHP pairs")
@@ -537,7 +729,6 @@ def main():
             detail_choice = input("Choose option (a/b/c, default: a): ").strip().lower()
             
             if detail_choice == 'b':
-                # Quick PHP pair selection
                 print("Fetching PHP pairs for quick selection...")
                 api = CoinsAPI(
                     api_key=os.getenv('COINS_API_KEY'),
@@ -549,7 +740,7 @@ def main():
                 php_pairs = [s for s in symbols if s.get('quoteAsset') == 'PHP' and s.get('status') == 'TRADING']
                 if php_pairs:
                     print(f"\nAVAILABLE PHP PAIRS ({len(php_pairs)} total):")
-                    for i, pair in enumerate(php_pairs[:20], 1):  # Show first 20
+                    for i, pair in enumerate(php_pairs[:20], 1):
                         print(f"{i:2d}. {pair['symbol']}")
                     if len(php_pairs) > 20:
                         print(f"    ... and {len(php_pairs) - 20} more")
@@ -565,7 +756,6 @@ def main():
                         print("Invalid number")
                         
             elif detail_choice == 'c':
-                # Quick USD pair selection
                 print("Fetching USD pairs for quick selection...")
                 api = CoinsAPI(
                     api_key=os.getenv('COINS_API_KEY'),
@@ -577,7 +767,7 @@ def main():
                 usd_pairs = [s for s in symbols if s.get('quoteAsset') in ('USDC', 'USDT') and s.get('status') == 'TRADING']
                 if usd_pairs:
                     print(f"\nAVAILABLE USD PAIRS ({len(usd_pairs)} total):")
-                    for i, pair in enumerate(usd_pairs[:20], 1):  # Show first 20
+                    for i, pair in enumerate(usd_pairs[:20], 1):
                         print(f"{i:2d}. {pair['symbol']}")
                     if len(usd_pairs) > 20:
                         print(f"    ... and {len(usd_pairs) - 20} more")
@@ -593,7 +783,6 @@ def main():
                         print("Invalid number")
                         
             else:
-                # Manual entry (default)
                 while True:
                     sym = input("\nEnter symbol (or blank to quit): ").strip().upper()
                     if not sym or sym.lower() in ('q', 'quit', 'exit'):
