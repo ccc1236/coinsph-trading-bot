@@ -36,7 +36,7 @@ For users with MarketRaker AI signal subscriptions, we also provide ORACLE in th
 - `ecosystem_manager.py` - Cross-tool data sharing and optimization
 
 ### **📊 Analysis & Utilities**
-- `check_volumes.py` - Trading volume analysis and pair recommendations
+- `check_volumes.py` - **Enhanced** trading volume analysis with USD pairs support, professional formatting, and quick pair selection
 - `test_connection.py` - API connectivity and trading permissions validator
 
 ### **🔮 Advanced AI Trading (Optional)**
@@ -239,13 +239,31 @@ python momentum_backtest.py
 - **Strategy Comparison**: Compare performance across assets
 - **Bot Configuration Export**: Generate TITAN ready configs
 
-### **Volume Analysis**
+### **Enhanced Volume Analysis**
 ```bash
 python check_volumes.py
 ```
-- Top trading pairs by 24hr volume
-- PHP pair rankings and liquidity analysis
-- Optimal pair recommendations
+
+**NEW Features:**
+- **USD Pairs Support**: Complete USDC/USDT pairs listing and volume analysis
+- **Professional Formatting**: Perfectly aligned tables with configurable column widths
+- **Quick Pair Selection**: No more manual typing - select from numbered lists
+- **5-Option Menu System**: Comprehensive analysis options
+- **Multi-Currency Display**: Proper ₱ and $ formatting for different pair types
+
+**Menu Options:**
+1. **Volume Analysis** - Top trading pairs by 24hr volume (PHP + USD)
+2. **PHP Pairs List** - All available PHP trading pairs with minimum orders
+3. **USD Pairs List** - All USDC/USDT pairs with advantages breakdown
+4. **Complete Analysis** - Combined volume + PHP + USD comprehensive view
+5. **Pair Details** - Enhanced lookup with quick selection options
+
+**Perfect for:**
+- Discovering high-volume trading opportunities
+- Finding new PHP and USD trading pairs
+- Analyzing market trends and liquidity
+- Quick pair lookup without manual typing
+- Comparing PHP vs USD market opportunities
 
 ---
 
@@ -332,6 +350,15 @@ python prophet.py                 # Optimize parameters
 python titan.py                   # Trade with optimized settings
 ```
 
+### **Volume Analysis & Pair Discovery**
+```bash
+python check_volumes.py           # Enhanced volume analysis with USD support
+# Choose option 3 → USD pairs list
+# Choose option 4 → Complete analysis  
+# Choose option 5 → b → Quick PHP pair selection
+# Choose option 5 → c → Quick USD pair selection
+```
+
 ### **Asset Explorer**
 ```bash
 python check_volumes.py           # Find high-volume pairs
@@ -404,6 +431,7 @@ This project is open source under MIT License. Use responsibly and at your own r
 - [ ] ✅ **Choose Your Path** (Quick start or research-driven)
 - [ ] ✅ **Run Research Analysis** (`python momentum_backtest.py` - optional but recommended)
 - [ ] ✅ **Optimize Parameters** (`python prophet.py` - optional but recommended)
+- [ ] ✅ **Analyze Volume & Pairs** (`python check_volumes.py` - discover opportunities)
 - [ ] ✅ **Start Trading** (`python titan.py`)
 - [ ] ✅ **Monitor Performance** (Check logs and real-time analytics)
 
