@@ -2,6 +2,8 @@ import sys
 import os
 import time
 import logging
+import json
+from pathlib import Path
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from coinsph_api_v2 import CoinsAPI
@@ -19,24 +21,22 @@ load_dotenv(override=True)
 
 class TitanTradingBot:
     """
-    🤖 TITAN - Advanced Momentum Trading Bot v4.0
+    🤖 TITAN - Advanced Momentum Trading Bot v4.1
     
-    NEW in v4.0:
-    - ✅ Configurable buy/sell thresholds at startup (no code changes needed)
-    - ✅ Enhanced optimization discoveries integrated (1.2% buy threshold)
-    - ✅ Asset-specific parameter suggestions based on backtesting
-    - ✅ Advanced parameter validation and recommendations
-    - ✅ Real-time parameter adjustment guidance
-    - ✅ Improved user interface with optimization insights
-    - ✅ Smart defaults based on asset volatility analysis
+    NEW in v4.1:
+    - ✅ Graceful exit handling (like Prophet)
+    - ✅ Simplified asset selection interface
+    - ✅ Improved error handling throughout
+    - ✅ Cleaner user experience
+    - ✅ Better keyboard interrupt handling
     """
     
     def __init__(self, symbol='XRPPHP', take_profit_pct=5.0, base_amount=200, 
                  position_sizing='adaptive', buy_threshold=1.2, sell_threshold=2.0):
         # Bot identity
         self.name = "TITAN"
-        self.version = "4.0.0"
-        self.description = "Advanced Momentum Trading Bot with Configurable Thresholds"
+        self.version = "4.1.0"
+        self.description = "Advanced Momentum Trading Bot"
         
         # Trading parameters - now fully configurable!
         self.symbol = symbol
@@ -90,10 +90,10 @@ class TitanTradingBot:
         os.makedirs('logs', exist_ok=True)
         
         # Create asset-specific log filename
-        log_filename = f"logs/titan_v4_{self.base_asset.lower()}.log"
+        log_filename = f"logs/titan_v41_{self.base_asset.lower()}.log"
         
         # Create custom logger for this TITAN instance
-        self.logger = logging.getLogger(f'TitanTradingBot_v4_{self.base_asset}')
+        self.logger = logging.getLogger(f'TitanTradingBot_v41_{self.base_asset}')
         self.logger.setLevel(logging.INFO)
         
         # CRITICAL: Prevent propagation to root logger (fixes duplicate output)
@@ -116,7 +116,7 @@ class TitanTradingBot:
         self.logger.addHandler(console_handler)
         
         # Log the setup
-        self.logger.info(f"📝 TITAN v4.0 logging initialized for {self.symbol}")
+        self.logger.info(f"📝 TITAN v4.1 logging initialized for {self.symbol}")
         self.logger.info(f"📁 Log file: {log_filename}")
 
     def get_asset_market_data(self):
@@ -191,12 +191,27 @@ class TitanTradingBot:
         if volume < 1000000:  # Low volume
             warnings.append(f"⚠️ Low volume asset (₱{volume:,.0f}) - May have liquidity issues")
         
-        # Asset-specific recommendations based on backtesting discoveries
+        # Asset-specific recommendations based on Prophet analysis
         if self.symbol == 'XRPPHP':
             if self.buy_threshold < 0.012:  # Less than 1.2%
-                suggestions.append(f"🎯 XRPPHP Optimization: 1.2% buy threshold showed +1.6% return in backtesting")
-            if self.take_profit_pct < 0.05:  # Less than 5%
-                suggestions.append(f"🎯 XRPPHP Optimization: 5.0% take profit was optimal in backtesting")
+                suggestions.append(f"🔮 Prophet optimized XRPPHP: 1.2% buy, 2.0% sell, 8.0% TP for best results")
+            if self.take_profit_pct < 0.08:  # Less than 8%
+                suggestions.append(f"🔮 Prophet analysis: 8.0% take profit optimal for XRPPHP volatility")
+        elif self.symbol == 'SOLPHP':
+            if self.buy_threshold > 0.008:  # Greater than 0.8%
+                suggestions.append(f"🔮 Prophet optimized SOLPHP: 0.6% buy threshold for high volatility")
+            if self.take_profit_pct > 0.025:  # Greater than 2.5%
+                suggestions.append(f"🔮 Prophet analysis: 2.0% TP optimal for SOL's rapid movements")
+        elif self.symbol in ['PEPEPHP', 'DOGEPHP']:
+            if self.buy_threshold > 0.010:  # Greater than 1.0%
+                suggestions.append(f"🔮 Prophet meme coin optimization: 0.8% buy threshold for volatility")
+            if self.position_sizing != 'momentum':
+                suggestions.append(f"🔮 Prophet recommendation: Momentum sizing for meme coins")
+        elif self.symbol in ['BTCPHP', 'ETHPHP']:
+            if self.buy_threshold < 0.010:  # Less than 1.0%
+                suggestions.append(f"🔮 Prophet stable coin optimization: 1.0% buy threshold for quality signals")
+            if self.take_profit_pct < 0.03:  # Less than 3%
+                suggestions.append(f"🔮 Prophet analysis: Higher TP (3-4%) for stable assets like {self.base_asset}")
         
         # Display suggestions
         if suggestions:
@@ -716,278 +731,348 @@ def get_symbol_suggestions():
         print(f"❌ Error getting symbol suggestions: {e}")
         return []
 
+def load_prophet_recommendations():
+    """Load Prophet's latest optimization results from JSON file"""
+    try:
+        recommendations_file = Path('prophet_recommendations.json')
+        
+        if not recommendations_file.exists():
+            print("📝 No Prophet recommendations found - using fallback defaults")
+            print("💡 Run prophet.py first to get optimized parameters")
+            return None
+            
+        with open(recommendations_file, 'r') as f:
+            data = json.loads(f.read())
+        
+        # Check if recommendations are recent (within 7 days)
+        if 'timestamp' in data:
+            from datetime import datetime, timedelta
+            recommendation_time = datetime.fromisoformat(data['timestamp'])
+            if datetime.now() - recommendation_time > timedelta(days=7):
+                print(f"⚠️  Prophet recommendations are {(datetime.now() - recommendation_time).days} days old")
+                print("💡 Consider running prophet.py again for fresh optimization")
+        
+        print(f"🔮 Loaded Prophet recommendations from {recommendation_time.strftime('%Y-%m-%d %H:%M') if 'timestamp' in data else 'recent analysis'}")
+        return data.get('recommendations', {})
+        
+    except Exception as e:
+        print(f"❌ Error loading Prophet recommendations: {e}")
+        print("💡 Run prophet.py first to generate optimization data")
+        return None
+
 def get_asset_optimization_recommendations(symbol):
-    """Get optimization recommendations based on backtesting discoveries"""
+    """Get optimization recommendations from Prophet's analysis or fallback defaults"""
     
-    # Backtesting-based recommendations
-    recommendations = {
+    # Try to load dynamic Prophet recommendations first
+    prophet_data = load_prophet_recommendations()
+    
+    if prophet_data and symbol in prophet_data:
+        # Use Prophet's dynamic recommendations
+        rec = prophet_data[symbol]
+        return {
+            'buy_threshold': rec.get('buy_threshold', 1.0),
+            'sell_threshold': rec.get('sell_threshold', 1.7),
+            'take_profit': rec.get('take_profit', 4.0),
+            'position_sizing': rec.get('position_sizing', 'adaptive'),
+            'rationale': f"Prophet optimized on {rec.get('analysis_date', 'recent data')}: {rec.get('rationale', 'Latest Prophet analysis')}",
+            'expected_performance': rec.get('expected_performance', 'Prophet-optimized performance'),
+            'source': 'prophet_dynamic'
+        }
+    
+    # Fallback to static recommendations if Prophet data not available
+    static_recommendations = {
         'XRPPHP': {
             'buy_threshold': 1.2,
             'sell_threshold': 2.0,
-            'take_profit': 5.0,
+            'take_profit': 8.0,
             'position_sizing': 'adaptive',
-            'rationale': 'Backtesting showed +1.6% return with 1.2% buy threshold and 5.0% TP',
-            'expected_performance': '+1.6% return, 58% win rate'
+            'rationale': 'Fallback: Run prophet.py for latest XRPPHP optimization',
+            'expected_performance': 'Static fallback - run Prophet for current optimization',
+            'source': 'static_fallback'
         },
         'SOLPHP': {
-            'buy_threshold': 0.8,
-            'sell_threshold': 1.3,
+            'buy_threshold': 0.6,
+            'sell_threshold': 1.0,
             'take_profit': 2.0,
             'position_sizing': 'momentum',
-            'rationale': 'High volatility asset - lower thresholds with momentum sizing',
-            'expected_performance': 'Variable based on volatility'
+            'rationale': 'Fallback: Run prophet.py for latest SOLPHP optimization',
+            'expected_performance': 'Static fallback - run Prophet for current optimization',
+            'source': 'static_fallback'
         },
         'BTCPHP': {
-            'buy_threshold': 1.5,
-            'sell_threshold': 2.5,
+            'buy_threshold': 1.0,
+            'sell_threshold': 1.7,
             'take_profit': 3.0,
-            'position_sizing': 'percentage',
-            'rationale': 'Low volatility - higher thresholds for signal quality',
-            'expected_performance': 'Conservative, steady performance'
+            'position_sizing': 'adaptive',
+            'rationale': 'Fallback: Run prophet.py for latest BTCPHP optimization',
+            'expected_performance': 'Static fallback - run Prophet for current optimization',
+            'source': 'static_fallback'
         }
     }
     
-    # Default recommendations for other assets
+    # Default for unknown symbols
     default = {
         'buy_threshold': 1.0,
         'sell_threshold': 1.7,
-        'take_profit': 3.0,
+        'take_profit': 4.0,
         'position_sizing': 'adaptive',
-        'rationale': 'Balanced settings for medium volatility assets',
-        'expected_performance': 'Moderate performance expected'
+        'rationale': 'Default settings - run prophet.py for symbol-specific optimization',
+        'expected_performance': 'Generic default - Prophet analysis recommended',
+        'source': 'default'
     }
     
-    return recommendations.get(symbol, default)
+    recommendation = static_recommendations.get(symbol, default)
+    
+    if prophet_data:
+        print(f"📝 {symbol} not in Prophet data - using fallback defaults")
+        print(f"💡 Run: python prophet.py and select {symbol} for optimization")
+    
+    return recommendation
 
 def get_user_inputs():
-    """Enhanced user input collection with optimization recommendations"""
-    print("🤖 TITAN - Advanced Momentum Trading Bot v4.0")
-    print("💡 NEW: Configurable buy/sell thresholds with optimization recommendations")
-    print("=" * 85)
-    
-    # Get symbol suggestions
-    print("🔍 Getting available trading pairs...")
-    suggestions = get_symbol_suggestions()
-    
-    if suggestions:
-        print(f"\n📊 TOP VOLUME PHP PAIRS (Recommended):")
-        for i, pair in enumerate(suggestions[:8], 1):
-            volume_str = f"₱{pair['volume']/1000000:.1f}M" if pair['volume'] >= 1000000 else f"₱{pair['volume']/1000:.0f}K"
-            change_emoji = "📈" if pair['price_change'] > 0 else "📉"
-            print(f"  {i}. {pair['symbol']:<8} - {volume_str:<8} {change_emoji} {pair['price_change']:+.1f}%")
-    
-    # Asset selection
-    print(f"\n🎯 Select trading asset:")
-    print("1. XRPPHP - OPTIMIZED (1.2% buy, 5.0% TP = +1.6% backtested return)")
-    print("2. SOLPHP - High volatility (Good for momentum strategies)")
-    print("3. BTCPHP - Lower volatility (Stable, conservative)")
-    print("4. Custom symbol - Enter any PHP trading pair")
-    
-    while True:
-        choice = input("Enter choice (1-4): ").strip()
-        if choice == '1':
-            symbol = 'XRPPHP'
-            break
-        elif choice == '2':
-            symbol = 'SOLPHP'
-            break
-        elif choice == '3':
-            symbol = 'BTCPHP'
-            break
-        elif choice == '4':
-            while True:
-                custom_symbol = input("Enter symbol (e.g., ETHPHP, ADAPHP): ").strip().upper()
-                if custom_symbol.endswith('PHP') and len(custom_symbol) >= 6:
-                    symbol = custom_symbol
+    """Enhanced user input collection with simplified interface and graceful exit handling"""
+    try:
+        print("🤖 TITAN - Advanced Momentum Trading Bot v4.1")
+        print("✨ NEW: Graceful exit handling and simplified interface")
+        print("=" * 65)
+        
+        # Get symbol suggestions
+        print("🔍 Getting available trading pairs...")
+        suggestions = get_symbol_suggestions()
+        
+        if suggestions:
+            print(f"\n📊 TOP VOLUME PHP PAIRS:")
+            for i, pair in enumerate(suggestions[:8], 1):
+                volume_str = f"₱{pair['volume']/1000000:.1f}M" if pair['volume'] >= 1000000 else f"₱{pair['volume']/1000:.0f}K"
+                change_emoji = "📈" if pair['price_change'] > 0 else "📉"
+                print(f"  {i}. {pair['symbol']:<8} - {volume_str:<8} {change_emoji} {pair['price_change']:+.1f}%")
+        
+        # Simplified asset selection with Prophet optimization notes
+        print(f"\n🎯 Select trading asset:")
+        print("1. XRPPHP - Prophet optimized")
+        print("2. SOLPHP - Prophet optimized") 
+        print("3. BTCPHP - Prophet optimized")
+        print("4. Custom symbol")
+        
+        while True:
+            choice = input("Enter choice (1-4): ").strip()
+            if choice == '1':
+                symbol = 'XRPPHP'
+                break
+            elif choice == '2':
+                symbol = 'SOLPHP'
+                break
+            elif choice == '3':
+                symbol = 'BTCPHP'
+                break
+            elif choice == '4':
+                while True:
+                    custom_symbol = input("Enter symbol (e.g., ETHPHP): ").strip().upper()
+                    if custom_symbol.endswith('PHP') and len(custom_symbol) >= 6:
+                        symbol = custom_symbol
+                        break
+                    else:
+                        print("Please enter a valid PHP trading pair")
+                break
+            else:
+                print("Please enter 1-4")
+        
+        # Get optimization recommendations for selected asset
+        recommendations = get_asset_optimization_recommendations(symbol)
+        
+        # Show recommendation source and details
+        source_emoji = "🔮" if recommendations['source'] == 'prophet_dynamic' else "📝" if recommendations['source'] == 'static_fallback' else "⚙️"
+        source_text = "PROPHET DYNAMIC" if recommendations['source'] == 'prophet_dynamic' else "FALLBACK" if recommendations['source'] == 'static_fallback' else "DEFAULT"
+        
+        print(f"\n{source_emoji} {source_text} OPTIMIZATION for {symbol}:")
+        print(f"💡 {recommendations['rationale']}")
+        print(f"📊 Expected: {recommendations['expected_performance']}")
+        print(f"   Buy: {recommendations['buy_threshold']:.1f}%")
+        print(f"   Sell: {recommendations['sell_threshold']:.1f}%")
+        print(f"   TP: {recommendations['take_profit']:.1f}%")
+        
+        if recommendations['source'] != 'prophet_dynamic':
+            print(f"💡 Pro tip: Run 'python prophet.py' first to get latest optimized parameters for {symbol}")
+        
+        print(f"\n📝 You can accept these recommendations or enter your own values:")
+        
+        # Buy threshold configuration
+        print(f"\n📈 Configure Buy Threshold:")
+        print(f"💡 Prophet/Default: {recommendations['buy_threshold']:.1f}%")
+        
+        while True:
+            try:
+                buy_input = input(f"Enter buy threshold % (or press Enter for {recommendations['buy_threshold']:.1f}%): ").strip()
+                if not buy_input:
+                    buy_threshold = recommendations['buy_threshold']
                     break
                 else:
-                    print("Please enter a valid PHP trading pair (e.g., ETHPHP)")
-            break
+                    buy_threshold = float(buy_input)
+                    if 0.1 <= buy_threshold <= 5.0:
+                        break
+                    else:
+                        print("Please enter a value between 0.1% and 5.0%")
+            except ValueError:
+                print("Please enter a valid number")
+        
+        # Sell threshold configuration
+        print(f"\n📉 Configure Sell Threshold:")
+        print(f"💡 Prophet/Default: {recommendations['sell_threshold']:.1f}%")
+        
+        while True:
+            try:
+                sell_input = input(f"Enter sell threshold % (or press Enter for {recommendations['sell_threshold']:.1f}%): ").strip()
+                if not sell_input:
+                    sell_threshold = recommendations['sell_threshold']
+                    break
+                else:
+                    sell_threshold = float(sell_input)
+                    if 0.1 <= sell_threshold <= 5.0:
+                        break
+                    else:
+                        print("Please enter a value between 0.1% and 5.0%")
+            except ValueError:
+                print("Please enter a valid number")
+        
+        # Take profit configuration
+        print(f"\n🎯 Configure Take Profit:")
+        print(f"💡 Prophet/Default: {recommendations['take_profit']:.1f}%")
+        
+        while True:
+            try:
+                take_profit_input = input(f"Enter take profit % (or press Enter for {recommendations['take_profit']:.1f}%): ").strip()
+                if not take_profit_input:
+                    take_profit = recommendations['take_profit']
+                    break
+                else:
+                    take_profit = float(take_profit_input)
+                    if 0.5 <= take_profit <= 15.0:
+                        break
+                    else:
+                        print("Please enter a value between 0.5% and 15.0%")
+            except ValueError:
+                print("Please enter a valid number")
+        
+        # Position sizing selection
+        print(f"\n📊 Select position sizing:")
+        print(f"1. Fixed")
+        print(f"2. Percentage") 
+        print(f"3. Momentum")
+        print(f"4. Adaptive")
+        print(f"💡 Prophet/Default: {recommendations['position_sizing']}")
+        
+        position_sizing_map = {
+            '1': 'fixed',
+            '2': 'percentage', 
+            '3': 'momentum',
+            '4': 'adaptive'
+        }
+        
+        while True:
+            sizing_choice = input(f"Enter choice (1-4, or press Enter for {recommendations['position_sizing']}): ").strip()
+            if not sizing_choice:
+                position_sizing = recommendations['position_sizing']
+                break
+            elif sizing_choice in position_sizing_map:
+                position_sizing = position_sizing_map[sizing_choice]
+                break
+            else:
+                print("Please enter 1, 2, 3, or 4")
+        
+        # Base amount configuration
+        print(f"\n💰 Configure trade amount:")
+        
+        while True:
+            try:
+                amount_input = input("Enter base trade amount in PHP (or press Enter for ₱300): ").strip()
+                if not amount_input:
+                    base_amount = 300
+                    break
+                else:
+                    base_amount = float(amount_input)
+                    if 50 <= base_amount <= 2000:
+                        break
+                    else:
+                        print("Please enter an amount between ₱50 and ₱2000")
+            except ValueError:
+                print("Please enter a valid number")
+        
+        # Configuration summary with source information
+        config_source = "🔮 Prophet Dynamic" if recommendations['source'] == 'prophet_dynamic' else "📝 Fallback/Custom"
+        print(f"\n✅ TITAN v4.1 CONFIGURATION ({config_source}):")
+        print(f"🎯 Asset: {symbol}")
+        print(f"📈 Buy threshold: {buy_threshold:.1f}%")
+        print(f"📉 Sell threshold: {sell_threshold:.1f}%")
+        print(f"🎯 Take profit: {take_profit:.1f}%")
+        print(f"💰 Position sizing: {position_sizing.title()}")
+        print(f"💰 Base amount: ₱{base_amount}")
+        print(f"📁 Log file: logs/titan_v41_{symbol.replace('PHP', '').lower()}.log")
+        
+        # Show if user customized vs using recommendations
+        customized = []
+        if buy_threshold != recommendations['buy_threshold']:
+            customized.append(f"Buy: {buy_threshold:.1f}% (was {recommendations['buy_threshold']:.1f}%)")
+        if sell_threshold != recommendations['sell_threshold']:
+            customized.append(f"Sell: {sell_threshold:.1f}% (was {recommendations['sell_threshold']:.1f}%)")
+        if take_profit != recommendations['take_profit']:
+            customized.append(f"TP: {take_profit:.1f}% (was {recommendations['take_profit']:.1f}%)")
+        if position_sizing != recommendations['position_sizing']:
+            customized.append(f"Sizing: {position_sizing} (was {recommendations['position_sizing']})")
+        
+        if customized:
+            print(f"\n📝 Customized settings: {', '.join(customized)}")
+        elif recommendations['source'] == 'prophet_dynamic':
+            print(f"\n🔮 Using Prophet's optimized settings for {symbol}")
         else:
-            print("Please enter 1-4")
-    
-    # Get optimization recommendations for selected asset
-    recommendations = get_asset_optimization_recommendations(symbol)
-    
-    print(f"\n🎯 OPTIMIZATION RECOMMENDATIONS for {symbol}:")
-    print(f"💡 Based on: {recommendations['rationale']}")
-    print(f"📊 Expected: {recommendations['expected_performance']}")
-    print(f"   Recommended Buy Threshold: {recommendations['buy_threshold']:.1f}%")
-    print(f"   Recommended Sell Threshold: {recommendations['sell_threshold']:.1f}%")
-    print(f"   Recommended Take Profit: {recommendations['take_profit']:.1f}%")
-    print(f"   Recommended Position Sizing: {recommendations['position_sizing']}")
-    
-    # Buy threshold configuration
-    print(f"\n📈 Configure Buy Threshold (Momentum trigger):")
-    print(f"💡 Recommended: {recommendations['buy_threshold']:.1f}% (optimized for {symbol})")
-    print(f"📊 Range: 0.5% (aggressive) to 2.5% (conservative)")
-    print(f"   Higher = fewer but higher quality trades")
-    print(f"   Lower = more frequent but potentially noisier trades")
-    
-    while True:
-        try:
-            buy_input = input(f"Enter buy threshold % (recommended: {recommendations['buy_threshold']:.1f}): ").strip()
-            if not buy_input:
-                buy_threshold = recommendations['buy_threshold']
-                break
-            else:
-                buy_threshold = float(buy_input)
-                if 0.1 <= buy_threshold <= 5.0:
-                    break
-                else:
-                    print("Please enter a value between 0.1% and 5.0%")
-        except ValueError:
-            print("Please enter a valid number")
-    
-    # Sell threshold configuration
-    print(f"\n📉 Configure Sell Threshold (Momentum down trigger):")
-    print(f"💡 Recommended: {recommendations['sell_threshold']:.1f}% (typically 1.5-2x buy threshold)")
-    print(f"📊 Range: 0.8% to 4.0%")
-    
-    while True:
-        try:
-            sell_input = input(f"Enter sell threshold % (recommended: {recommendations['sell_threshold']:.1f}): ").strip()
-            if not sell_input:
-                sell_threshold = recommendations['sell_threshold']
-                break
-            else:
-                sell_threshold = float(sell_input)
-                if 0.1 <= sell_threshold <= 5.0:
-                    break
-                else:
-                    print("Please enter a value between 0.1% and 5.0%")
-        except ValueError:
-            print("Please enter a valid number")
-    
-    # Take profit configuration
-    print(f"\n🎯 Configure Take Profit:")
-    print(f"💡 Recommended: {recommendations['take_profit']:.1f}% (optimized for {symbol})")
-    
-    while True:
-        try:
-            take_profit = input(f"Enter take profit % (recommended: {recommendations['take_profit']:.1f}): ").strip()
-            if not take_profit:
-                take_profit = recommendations['take_profit']
-                break
-            else:
-                take_profit = float(take_profit)
-                if 0.5 <= take_profit <= 15.0:
-                    break
-                else:
-                    print("Please enter a value between 0.5% and 15.0%")
-        except ValueError:
-            print("Please enter a valid number")
-    
-    # Position sizing selection
-    print(f"\n📊 Select position sizing strategy:")
-    print(f"1. Fixed - Same amount every trade")
-    print(f"2. Percentage - 10% of available balance")
-    print(f"3. Momentum - Larger positions on stronger signals")
-    print(f"4. Adaptive - Multi-factor intelligent sizing (recommended)")
-    print(f"💡 Recommended: {recommendations['position_sizing']} (optimized for {symbol})")
-    
-    position_sizing_map = {
-        '1': 'fixed',
-        '2': 'percentage', 
-        '3': 'momentum',
-        '4': 'adaptive'
-    }
-    
-    # Find recommended option number
-    recommended_option = None
-    for key, value in position_sizing_map.items():
-        if value == recommendations['position_sizing']:
-            recommended_option = key
-            break
-    
-    while True:
-        sizing_choice = input(f"Enter choice (1-4, recommended: {recommended_option}): ").strip()
-        if not sizing_choice and recommended_option:
-            position_sizing = recommendations['position_sizing']
-            break
-        elif sizing_choice in position_sizing_map:
-            position_sizing = position_sizing_map[sizing_choice]
-            break
-        else:
-            print("Please enter 1, 2, 3, or 4")
-    
-    # Base amount configuration
-    print(f"\n💰 Configure trade amount:")
-    print(f"💡 Recommended: ₱200-400 range")
-    
-    while True:
-        try:
-            amount_input = input("Enter base trade amount in PHP (recommended: 300): ").strip()
-            if not amount_input:
-                base_amount = 300
-                break
-            else:
-                base_amount = float(amount_input)
-                if 50 <= base_amount <= 2000:
-                    break
-                else:
-                    print("Please enter an amount between ₱50 and ₱2000")
-        except ValueError:
-            print("Please enter a valid number")
-    
-    # Configuration summary
-    print(f"\n✅ TITAN v4.0 CONFIGURATION:")
-    print(f"🎯 Asset: {symbol}")
-    print(f"📈 Buy threshold: {buy_threshold:.1f}% (trigger for long entries)")
-    print(f"📉 Sell threshold: {sell_threshold:.1f}% (trigger for exits)")
-    print(f"🎯 Take profit: {take_profit:.1f}%")
-    print(f"💰 Position sizing: {position_sizing.title()}")
-    print(f"💰 Base amount: ₱{base_amount}")
-    print(f"📁 Log file: logs/titan_v4_{symbol.replace('PHP', '').lower()}.log")
-    
-    # Parameter analysis
-    print(f"\n📊 PARAMETER ANALYSIS:")
-    ratio = sell_threshold / buy_threshold
-    if ratio < 1.2:
-        print("⚠️ Sell threshold might be too close to buy threshold")
-    elif ratio > 3.0:
-        print("⚠️ Sell threshold might be too far from buy threshold")
-    else:
-        print(f"✅ Good buy/sell ratio: {ratio:.1f}x")
-    
-    if buy_threshold < 0.8:
-        print("💡 Low buy threshold = more frequent trading")
-    elif buy_threshold > 1.5:
-        print("💡 High buy threshold = more selective trading")
-    
-    print(f"\n🎯 Expected trading frequency: {'High' if buy_threshold < 1.0 else 'Medium' if buy_threshold < 1.5 else 'Low'}")
-    
-    return symbol, take_profit, base_amount, position_sizing, buy_threshold, sell_threshold
+            print(f"\n📝 Using default settings - run Prophet for optimization")
+        
+        return symbol, take_profit, base_amount, position_sizing, buy_threshold, sell_threshold
+        
+    except KeyboardInterrupt:
+        print("\n🛑 TITAN v4.1 setup cancelled gracefully")
+        print("✨ Thank you for using TITAN")
+        return None, None, None, None, None, None
 
 def main():
-    """Enhanced main function"""
-    # Check API credentials
-    if not os.getenv('COINS_API_KEY') or not os.getenv('COINS_SECRET_KEY'):
-        print("❌ API credentials not found!")
-        print("Please set COINS_API_KEY and COINS_SECRET_KEY in your .env file")
-        return
-    
-    # Get user configuration
-    symbol, take_profit, base_amount, position_sizing, buy_threshold, sell_threshold = get_user_inputs()
-    
-    # Final confirmation
-    print(f"\n🚀 Ready to start TITAN v4.0 with configurable thresholds!")
-    print(f"💡 You can now adjust buy/sell thresholds without code changes")
-    confirm = input("Start the bot? (y/n): ").lower().strip()
-    
-    if confirm.startswith('y'):
-        # Initialize and start bot with all configurable parameters
-        bot = TitanTradingBot(
-            symbol=symbol, 
-            take_profit_pct=take_profit, 
-            base_amount=base_amount, 
-            position_sizing=position_sizing,
-            buy_threshold=buy_threshold,
-            sell_threshold=sell_threshold
-        )
-        bot.start()
-    else:
-        print("👋 TITAN v4.0 startup cancelled")
+    """Enhanced main function with graceful exit handling"""
+    try:
+        # Check API credentials
+        if not os.getenv('COINS_API_KEY') or not os.getenv('COINS_SECRET_KEY'):
+            print("❌ API credentials not found!")
+            print("Please set COINS_API_KEY and COINS_SECRET_KEY in your .env file")
+            return
+        
+        # Get user configuration with graceful exit handling
+        result = get_user_inputs()
+        if result[0] is None:  # User cancelled
+            return
+        
+        symbol, take_profit, base_amount, position_sizing, buy_threshold, sell_threshold = result
+        
+        # Final confirmation
+        print(f"\n🚀 Ready to start TITAN v4.1!")
+        confirm = input("Start the bot? (y/n): ").lower().strip()
+        
+        if confirm.startswith('y'):
+            # Initialize and start bot with all configurable parameters
+            bot = TitanTradingBot(
+                symbol=symbol, 
+                take_profit_pct=take_profit, 
+                base_amount=base_amount, 
+                position_sizing=position_sizing,
+                buy_threshold=buy_threshold,
+                sell_threshold=sell_threshold
+            )
+            bot.start()
+        else:
+            print("👋 TITAN v4.1 startup cancelled")
+            
+    except KeyboardInterrupt:
+        print("\n🛑 TITAN v4.1 session ended gracefully")
+        print("✨ Thank you for using TITAN")
+    except Exception as e:
+        print(f"\n❌ TITAN v4.1 encountered an error: {e}")
+        print("🔧 Please check your configuration and try again")
 
 if __name__ == '__main__':
     main()
